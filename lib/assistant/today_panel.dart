@@ -4,6 +4,7 @@ import 'actual_client.dart';
 import 'brief.dart';
 import 'chat.dart';
 import 'chat_view.dart';
+import 'ollama.dart';
 import 'ha_client.dart';
 import 'panel_style.dart';
 import 'panel_tabs.dart';
@@ -65,6 +66,9 @@ class TodayPanel extends StatefulWidget {
     this.onSend,
     this.haAgent = '',
     this.onSaveAgent,
+    this.offlineAi,
+    this.offlineModel = kDefaultOllamaModel,
+    this.onSaveOfflineModel,
     this.memory,
   });
 
@@ -120,6 +124,11 @@ class TodayPanel extends StatefulWidget {
   /// Conversation agent entity, empty for Home Assistant's built-in one.
   final String haAgent;
   final void Function(String agent)? onSaveAgent;
+
+  /// The offline AI on this PC (Ollama), used when Home Assistant is away.
+  final OllamaSetup? offlineAi;
+  final String offlineModel;
+  final void Function(String model)? onSaveOfflineModel;
 
   /// Folded sections and chosen dashboard; kept in memory only when null.
   final PanelMemory? memory;
@@ -256,7 +265,7 @@ class _TodayPanelState extends State<TodayPanel> {
     final vikunja = widget.vikunja;
     return TabBarView(
       children: [
-        client == null || widget.onSend == null
+        widget.onSend == null
             ? missing('Home Assistant')
             : ChatTab(
                 messages: widget.messages,
@@ -294,6 +303,8 @@ class _TodayPanelState extends State<TodayPanel> {
         ),
         if ((widget.client, widget.onSaveAgent) case (final client?, final onSave?))
           AgentForm(client: client, agent: widget.haAgent, onSave: onSave),
+        if ((widget.offlineAi, widget.onSaveOfflineModel) case (final ai?, final onSave?))
+          OfflineAiForm(setup: ai, model: widget.offlineModel, onSave: onSave),
         _ServerForm(
           title: 'Vikunja',
           intro:

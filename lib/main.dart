@@ -16,6 +16,7 @@ import 'assistant/today.dart';
 import 'assistant/actual_client.dart';
 import 'assistant/spotify_client.dart';
 import 'assistant/chat.dart';
+import 'assistant/ollama.dart';
 import 'assistant/today_panel.dart';
 import 'assistant/vikunja_client.dart';
 import 'noxo/brain.dart';
@@ -142,28 +143,61 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
       _chat.add(ChatMessage(text: text, fromUser: true));
       _thinking = true;
     });
-    ChatMessage answer;
-    try {
-      final reply = await HaClient(
-        _haUrl,
-        _haToken,
-      ).converse(text, conversationId: _conversationId, agentId: _haAgent);
-      _conversationId = reply.conversationId ?? _conversationId;
-      answer = ChatMessage(text: reply.text, fromUser: false);
-    } on HaException catch (e) {
-      answer = ChatMessage(text: e.message, fromUser: false, error: true);
-    } catch (_) {
-      answer = const ChatMessage(
-        text: 'Home Assistant est injoignable, je ne peux pas répondre.',
-        fromUser: false,
-        error: true,
-      );
+    ChatMessage? answer;
+    var haProblem = "Noxo n'est pas relié à Home Assistant";
+    if (_haConfigured) {
+      try {
+        final reply = await HaClient(
+          _haUrl,
+          _haToken,
+        ).converse(text, conversationId: _conversationId, agentId: _haAgent);
+        _conversationId = reply.conversationId ?? _conversationId;
+        answer = ChatMessage(text: reply.text, fromUser: false);
+      } on HaException catch (e) {
+        haProblem = e.message;
+      } catch (_) {
+        haProblem = 'Home Assistant est injoignable';
+      }
     }
+    // Home Assistant away: the AI on this PC answers instead.
+    final message = answer ?? await _askOfflineAi(haProblem);
     if (!mounted) return;
     setState(() {
-      _chat.add(answer);
+      _chat.add(message);
       _thinking = false;
     });
+  }
+
+  String get _offlineModel => widget.prefs.getString('ollama_model') ?? kDefaultOllamaModel;
+
+  /// Ollama and its model, installed by Noxo himself.
+  final _offlineAi = OllamaSetup();
+  Timer? _offlineAiTimer;
+
+  Future<ChatMessage> _askOfflineAi(String haProblem) async {
+    try {
+      if (!await _offlineAi.start()) throw const OllamaException('Ollama absent');
+      final text = await _offlineAi.client.chat(
+        _offlineModel,
+        ollamaMessages(_chat, DateTime.now()),
+      );
+      return ChatMessage(text: text, fromUser: false, source: 'IA du PC (hors ligne)');
+    } catch (_) {
+      final why = _offlineAi.busy ? "l'IA du PC est en cours d'installation" : "l'IA du PC ne répond pas";
+      return ChatMessage(text: '$haProblem et $why.', fromUser: false, error: true);
+    }
+  }
+
+  Future<void> _saveOfflineModel(String model) async {
+    final chosen = model.isEmpty ? kDefaultOllamaModel : model;
+    await widget.prefs.setString('ollama_model', chosen);
+    if (mounted) setState(() {});
+    unawaited(_offlineAi.ensure(chosen));
+  }
+
+  /// At startup, then every hour until it is done.
+  void _installOfflineAi() {
+    if (!_offlineAi.ready) unawaited(_offlineAi.ensure(_offlineModel));
   }
 
   Future<void> _saveAgent(String agent) async {
@@ -423,6 +457,8 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     // Lets the installer that started this Noxo finish before cleaning up.
     _cleanUpdate = Timer(const Duration(seconds: 30), cleanUpdate);
     _briefTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkBrief());
+    _firstOfflineAi = Timer(const Duration(seconds: 15), _installOfflineAi);
+    _offlineAiTimer = Timer.periodic(const Duration(hours: 1), (_) => _installOfflineAi());
   }
 
   Timer? _firstToday;
@@ -620,8 +656,13 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     }
   }
 
+  Timer? _firstOfflineAi;
+
   @override
   void dispose() {
+    _firstOfflineAi?.cancel();
+    _offlineAiTimer?.cancel();
+    _offlineAi.dispose();
     _firstCheck?.cancel();
     _dailyCheck?.cancel();
     _todayTimer?.cancel();
@@ -676,6 +717,9 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 onSend: _sendChat,
                 haAgent: _haAgent,
                 onSaveAgent: _saveAgent,
+                offlineAi: _offlineAi,
+                offlineModel: _offlineModel,
+                onSaveOfflineModel: _saveOfflineModel,
               )
             : NoxoView(
                 brain: widget.brain,

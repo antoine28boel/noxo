@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'chat.dart';
 import 'ha_client.dart';
+import 'ollama.dart';
 import 'panel_style.dart';
 
 /// The chat with the owl: his answers come from Home Assistant's
@@ -135,7 +136,7 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = message.fromUser;
-    return Align(
+    final bubble = Align(
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 300),
@@ -153,6 +154,83 @@ class _Bubble extends StatelessWidget {
           ),
         ),
       ),
+    );
+    final source = message.source;
+    if (source == null) return bubble;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        bubble,
+        Padding(
+          padding: const EdgeInsets.only(left: 6, bottom: 2),
+          child: Text(source, style: const TextStyle(color: panelMuted, fontSize: 11)),
+        ),
+      ],
+    );
+  }
+}
+
+/// The offline AI (Ollama on this PC): where its installation stands and
+/// which model it uses.
+class OfflineAiForm extends StatefulWidget {
+  const OfflineAiForm({super.key, required this.setup, required this.model, required this.onSave});
+
+  final OllamaSetup setup;
+  final String model;
+
+  /// Saves the model and installs it if needed.
+  final void Function(String model) onSave;
+
+  @override
+  State<OfflineAiForm> createState() => _OfflineAiFormState();
+}
+
+class _OfflineAiFormState extends State<OfflineAiForm> {
+  late final _model = TextEditingController(text: widget.model);
+
+  @override
+  void dispose() {
+    _model.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.setup,
+      builder: (context, _) {
+        final setup = widget.setup;
+        return PanelSection(
+          title: 'IA hors ligne',
+          children: [
+            const PanelNote(
+              "Quand Home Assistant est injoignable, Noxo répond avec Ollama, "
+              "une IA qui tourne sur ce PC sans internet. Noxo l'installe "
+              'lui-même avec son modèle.',
+            ),
+            const SizedBox(height: 8),
+            if (setup.status.isNotEmpty) PanelNote(setup.status),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _model,
+              enabled: !setup.busy,
+              decoration: const InputDecoration(
+                labelText: 'Modèle',
+                hintText: kDefaultOllamaModel,
+                helperText: 'Le même que celui de Home Assistant, idéalement',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: setup.busy ? null : () => widget.onSave(_model.text.trim()),
+                child: Text(setup.ready ? 'Changer de modèle' : 'Installer'),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

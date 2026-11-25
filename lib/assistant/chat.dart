@@ -1,6 +1,11 @@
 /// One line of the conversation with Noxo.
 class ChatMessage {
-  const ChatMessage({required this.text, required this.fromUser, this.error = false});
+  const ChatMessage({
+    required this.text,
+    required this.fromUser,
+    this.error = false,
+    this.source,
+  });
 
   final String text;
 
@@ -9,6 +14,9 @@ class ChatMessage {
 
   /// Noxo could not get an answer (Home Assistant unreachable…).
   final bool error;
+
+  /// Who answered, when it is worth saying (the PC's AI, offline).
+  final String? source;
 }
 
 /// Home Assistant's answer to a sentence.
