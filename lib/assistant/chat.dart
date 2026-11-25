@@ -41,3 +41,30 @@ ConversationReply? parseConversationReply(Object? json) {
     failed: failed,
   );
 }
+
+/// A conversation agent of Home Assistant (an AI or its built-in Assist).
+class ConversationAgent {
+  const ConversationAgent({required this.id, required this.name});
+
+  /// Entity id, e.g. `conversation.ollama`.
+  final String id;
+  final String name;
+}
+
+/// The conversation agents found in `/api/states`, by name. Home
+/// Assistant's built-in agent is left out: it is the default choice.
+List<ConversationAgent> parseConversationAgents(Object? json) {
+  if (json is! List) return const [];
+  final agents = <ConversationAgent>[];
+  for (final state in json) {
+    if (state is! Map) continue;
+    final id = state['entity_id'];
+    if (id is! String || !id.startsWith('conversation.')) continue;
+    if (id == 'conversation.home_assistant') continue;
+    final attributes = state['attributes'];
+    final name = attributes is Map ? attributes['friendly_name'] : null;
+    agents.add(ConversationAgent(id: id, name: name is String && name.isNotEmpty ? name : id));
+  }
+  agents.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return agents;
+}

@@ -41,4 +41,18 @@ void main() {
       expect(parseConversationReply({'message': 'x'}), isNull);
     });
   });
+
+  test('parseConversationAgents lists the AIs, without Assist', () {
+    final agents = parseConversationAgents([
+      {'entity_id': 'light.salon', 'attributes': {'friendly_name': 'Salon'}},
+      {'entity_id': 'conversation.home_assistant', 'attributes': {'friendly_name': 'Home Assistant'}},
+      {'entity_id': 'conversation.ollama', 'attributes': {'friendly_name': 'Ollama'}},
+      {'entity_id': 'conversation.claude', 'attributes': {'friendly_name': 'Claude'}},
+      {'entity_id': 'conversation.sans_nom', 'attributes': {}},
+    ]);
+    expect([for (final a in agents) a.id],
+        ['conversation.claude', 'conversation.sans_nom', 'conversation.ollama']);
+    expect(agents.first.name, 'Claude');
+    expect(parseConversationAgents({'oops': 1}), isEmpty);
+  });
 }

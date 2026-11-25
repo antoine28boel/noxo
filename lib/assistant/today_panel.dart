@@ -292,8 +292,8 @@ class _TodayPanelState extends State<TodayPanel> {
           configured: widget.configured,
           onSave: widget.onSaveSettings,
         ),
-        if (widget.onSaveAgent case final onSave?)
-          AgentForm(agent: widget.haAgent, onSave: onSave),
+        if ((widget.client, widget.onSaveAgent) case (final client?, final onSave?))
+          AgentForm(client: client, agent: widget.haAgent, onSave: onSave),
         _ServerForm(
           title: 'Vikunja',
           intro:

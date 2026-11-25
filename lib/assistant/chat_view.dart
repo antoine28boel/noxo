@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'chat.dart';
+import 'ha_client.dart';
 import 'panel_style.dart';
 
 /// The chat with the owl: his answers come from Home Assistant's
@@ -156,10 +157,12 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-/// The conversation agent used by the chat, in the settings.
+/// The conversation agent used by the chat, chosen in the settings among
+/// those Home Assistant offers.
 class AgentForm extends StatefulWidget {
-  const AgentForm({super.key, required this.agent, required this.onSave});
+  const AgentForm({super.key, required this.client, required this.agent, required this.onSave});
 
+  final HaClient client;
   final String agent;
   final void Function(String agent) onSave;
 
@@ -168,45 +171,59 @@ class AgentForm extends StatefulWidget {
 }
 
 class _AgentFormState extends State<AgentForm> {
-  late final _agent = TextEditingController(text: widget.agent);
-  bool _saved = false;
+  late String _agent = widget.agent;
+  List<ConversationAgent>? _agents;
+  String? _error;
 
   @override
-  void dispose() {
-    _agent.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final agents = parseConversationAgents(await widget.client.states());
+      if (mounted) setState(() => _agents = agents);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Liste des agents indisponible (Home Assistant injoignable).');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final agents = _agents;
+    final ids = {for (final a in agents ?? const <ConversationAgent>[]) a.id};
     return PanelSection(
       title: 'Discussion',
       children: [
         const PanelNote(
-          'Agent de conversation de Home Assistant. Vide : Assist intégré, '
-          'sans IA (commandes de la maison). Une fois une IA ajoutée à Home '
-          'Assistant, indique son entité, par ex. conversation.ollama.',
+          'IA qui te répond, parmi les agents de conversation de Home Assistant. '
+          'Pour en avoir une, ajoute une intégration IA à Home Assistant '
+          '(Ollama, Anthropic, OpenAI, Google…) ; elle apparaîtra ici.',
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _agent,
-          onChanged: (_) => setState(() => _saved = false),
-          decoration: const InputDecoration(
-            labelText: 'Agent (facultatif)',
-            hintText: 'conversation.xxx',
-          ),
-        ),
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: () {
-              widget.onSave(_agent.text.trim());
-              setState(() => _saved = true);
+        if (_error != null)
+          PanelNote(_error!, error: true)
+        else if (agents == null)
+          const PanelNote('Chargement…')
+        else
+          DropdownButton<String>(
+            value: _agent,
+            isExpanded: true,
+            dropdownColor: panelCard,
+            items: [
+              const DropdownMenuItem(value: '', child: Text('Assist (intégré, sans IA)')),
+              for (final a in agents) DropdownMenuItem(value: a.id, child: Text(a.name)),
+              if (_agent.isNotEmpty && !ids.contains(_agent))
+                DropdownMenuItem(value: _agent, child: Text('$_agent (introuvable)')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _agent = value);
+              widget.onSave(value);
             },
-            child: Text(_saved ? 'Enregistré' : 'Enregistrer'),
           ),
-        ),
       ],
     );
   }
