@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'brief.dart';
+import 'chat.dart';
 import 'today.dart';
 
 /// Size of the panel window, in logical pixels.
@@ -12,8 +13,8 @@ const _text = Color(0xFFF5E9D3);
 const _muted = Color(0xFFBFAE95);
 const _accent = Color(0xFFF2B53A);
 
-/// The "Aujourd'hui" panel: weather, agenda and tasks read from Home
-/// Assistant, plus the form to connect to it.
+/// Noxo's panel: the chat with him, the "Aujourd'hui" view (weather, agenda
+/// and tasks read from Home Assistant) and the form to connect to it.
 class TodayPanel extends StatefulWidget {
   const TodayPanel({
     super.key,
@@ -23,6 +24,11 @@ class TodayPanel extends StatefulWidget {
     required this.status,
     required this.configured,
     required this.haUrl,
+    required this.haAgent,
+    this.startInChat = false,
+    required this.messages,
+    required this.thinking,
+    required this.onSend,
     required this.onRefresh,
     required this.onClose,
     required this.onSaveSettings,
@@ -43,21 +49,77 @@ class TodayPanel extends StatefulWidget {
   final bool configured;
   final String haUrl;
 
+  /// Conversation agent entity, empty for Home Assistant's built-in one.
+  final String haAgent;
+
+  /// Opens on the chat (Noxo called from his island) instead of the day.
+  final bool startInChat;
+
+  final List<ChatMessage> messages;
+
+  /// Waiting for Noxo's answer.
+  final bool thinking;
+  final void Function(String text) onSend;
+
   final VoidCallback onRefresh;
   final VoidCallback onClose;
 
-  /// Saves the address and token (an empty token keeps the saved one).
+  /// Saves the address, token (an empty one keeps the saved one) and agent.
   /// Returns an error message, or null when the connection works.
-  final Future<String?> Function(String url, String token) onSaveSettings;
+  final Future<String?> Function(String url, String token, String agent) onSaveSettings;
 
   @override
   State<TodayPanel> createState() => _TodayPanelState();
 }
 
+enum _View { chat, today, settings }
+
 class _TodayPanelState extends State<TodayPanel> {
-  late bool _settings = !widget.configured;
+  late _View _view = !widget.configured
+      ? _View.settings
+      : (widget.startInChat ? _View.chat : _View.today);
   late final _url = TextEditingController(text: widget.haUrl);
   final _token = TextEditingController();
+  late final _agent = TextEditingController(text: widget.haAgent);
+  final _input = TextEditingController();
+  final _inputFocus = FocusNode();
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_view == _View.chat) _inputFocus.requestFocus();
+  }
+
+  @override
+  void didUpdateWidget(TodayPanel old) {
+    super.didUpdateWidget(old);
+    if (widget.messages.length != old.messages.length || widget.thinking != old.thinking) {
+      _scrollToEnd();
+    }
+  }
+
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
+
+  void _send() {
+    final text = _input.text.trim();
+    if (text.isEmpty || widget.thinking) return;
+    _input.clear();
+    widget.onSend(text);
+    _inputFocus.requestFocus();
+  }
+
+  void _show(_View view) {
+    setState(() => _view = view);
+    if (view == _View.chat) {
+      _inputFocus.requestFocus();
+      _scrollToEnd();
+    }
+  }
   bool _saving = false;
   String? _error;
 
@@ -65,6 +127,10 @@ class _TodayPanelState extends State<TodayPanel> {
   void dispose() {
     _url.dispose();
     _token.dispose();
+    _agent.dispose();
+    _input.dispose();
+    _inputFocus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -73,14 +139,14 @@ class _TodayPanelState extends State<TodayPanel> {
       _saving = true;
       _error = null;
     });
-    final error = await widget.onSaveSettings(_url.text, _token.text);
+    final error = await widget.onSaveSettings(_url.text, _token.text, _agent.text);
     if (!mounted) return;
     setState(() {
       _saving = false;
       _error = error;
       if (error == null) {
         _token.clear();
-        _settings = false;
+        _view = _View.today;
       }
     });
   }
@@ -99,7 +165,13 @@ class _TodayPanelState extends State<TodayPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _header(),
-              Expanded(child: _settings ? _settingsForm() : _today()),
+              Expanded(
+                child: switch (_view) {
+                  _View.chat => _chat(),
+                  _View.today => _today(),
+                  _View.settings => _settingsForm(),
+                },
+              ),
             ],
           ),
         ),
@@ -116,19 +188,28 @@ class _TodayPanelState extends State<TodayPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_settings ? 'Home Assistant' : "Aujourd'hui",
+                Text(
+                    switch (_view) {
+                      _View.chat => 'Noxo',
+                      _View.today => "Aujourd'hui",
+                      _View.settings => 'Home Assistant',
+                    },
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                 Text(frenchDate(widget.now), style: const TextStyle(color: _muted)),
               ],
             ),
           ),
-          if (!_settings && widget.configured)
-            _HeaderButton(label: 'Actualiser', onTap: widget.onRefresh),
+          if (_view == _View.today && widget.configured)
+            _HeaderIcon(icon: Icons.refresh, tooltip: 'Actualiser', onTap: widget.onRefresh),
+          if (_view == _View.chat)
+            _HeaderButton(label: "Aujourd'hui", onTap: () => _show(_View.today))
+          else if (_view == _View.today && widget.configured)
+            _HeaderButton(label: 'Discuter', onTap: () => _show(_View.chat)),
           _HeaderButton(
-            label: _settings ? 'Retour' : 'Réglages',
-            onTap: () => setState(() => _settings = !_settings),
+            label: _view == _View.settings ? 'Retour' : 'Réglages',
+            onTap: () => _show(_view == _View.settings ? _View.today : _View.settings),
           ),
-          _HeaderButton(label: 'Fermer', onTap: widget.onClose),
+          _HeaderIcon(icon: Icons.close, tooltip: 'Fermer', onTap: widget.onClose),
         ],
       ),
     );
@@ -182,6 +263,66 @@ class _TodayPanelState extends State<TodayPanel> {
     );
   }
 
+  Widget _chat() {
+    final messages = widget.messages;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+            children: [
+              if (messages.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text(
+                    'Demande-moi quelque chose : « allume la lumière du salon », '
+                    '« quelle heure est-il ? »…',
+                    style: TextStyle(color: _muted),
+                  ),
+                ),
+              for (final m in messages) _Bubble(message: m),
+              if (widget.thinking)
+                const _Bubble(message: ChatMessage(text: '…', fromUser: false)),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 8, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _input,
+                  focusNode: _inputFocus,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _send(),
+                  decoration: InputDecoration(
+                    hintText: 'Écris à Noxo…',
+                    filled: true,
+                    fillColor: _card,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              _HeaderIcon(
+                icon: Icons.send,
+                tooltip: 'Envoyer',
+                onTap: widget.thinking ? null : _send,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _settingsForm() {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
@@ -207,6 +348,16 @@ class _TodayPanelState extends State<TodayPanel> {
           decoration: InputDecoration(
             labelText: 'Jeton',
             hintText: widget.configured ? 'Laisser vide pour garder le jeton actuel' : null,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _agent,
+          enabled: !_saving,
+          decoration: const InputDecoration(
+            labelText: 'Agent de conversation (facultatif)',
+            hintText: 'Vide : Assist intégré (sans IA)',
+            helperText: 'Ex. conversation.ollama, une fois une IA ajoutée à Home Assistant',
           ),
         ),
         const SizedBox(height: 16),
@@ -243,6 +394,57 @@ class _HeaderButton extends StatelessWidget {
         minimumSize: const Size(0, 36),
       ),
       child: Text(label),
+    );
+  }
+}
+
+class _HeaderIcon extends StatelessWidget {
+  const _HeaderIcon({required this.icon, required this.tooltip, required this.onTap});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      icon: Icon(icon, size: 20),
+      color: _accent,
+      visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.message});
+
+  final ChatMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = message.fromUser;
+    return Align(
+      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: user ? _accent : _card,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: SelectableText(
+          message.text,
+          style: TextStyle(
+            height: 1.35,
+            color: user
+                ? _background
+                : (message.error ? const Color(0xFFFF8F8F) : _text),
+          ),
+        ),
+      ),
     );
   }
 }

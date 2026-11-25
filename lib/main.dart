@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 import 'assistant/brief.dart';
 import 'assistant/ha_client.dart';
 import 'assistant/today.dart';
+import 'assistant/chat.dart';
 import 'assistant/today_panel.dart';
 import 'noxo/brain.dart';
 import 'noxo/feather.dart';
@@ -106,6 +107,12 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   String? _todayError;
   Timer? _todayTimer;
 
+  // Chat with Noxo (kept until he quits).
+  bool _panelChat = false;
+  final List<ChatMessage> _chat = [];
+  String? _conversationId;
+  bool _thinking = false;
+
   // Morning brief.
   Brief? _brief;
   bool _briefing = false;
@@ -114,7 +121,35 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
 
   String get _haUrl => widget.prefs.getString('ha_url') ?? '';
   String get _haToken => widget.prefs.getString('ha_token') ?? '';
+  String get _haAgent => widget.prefs.getString('ha_agent') ?? '';
   bool get _haConfigured => _haUrl.isNotEmpty && _haToken.isNotEmpty;
+
+  Future<void> _sendChat(String text) async {
+    if (_thinking) return;
+    setState(() {
+      _chat.add(ChatMessage(text: text, fromUser: true));
+      _thinking = true;
+    });
+    ChatMessage answer;
+    try {
+      final reply = await HaClient(_haUrl, _haToken)
+          .converse(text, conversationId: _conversationId, agentId: _haAgent);
+      _conversationId = reply.conversationId ?? _conversationId;
+      answer = ChatMessage(text: reply.text, fromUser: false);
+    } on HaException catch (e) {
+      answer = ChatMessage(text: e.message, fromUser: false, error: true);
+    } catch (_) {
+      answer = const ChatMessage(
+          text: 'Home Assistant est injoignable, je ne peux pas répondre.',
+          fromUser: false,
+          error: true);
+    }
+    if (!mounted) return;
+    setState(() {
+      _chat.add(answer);
+      _thinking = false;
+    });
+  }
 
   void _loadCachedToday() {
     final cached = widget.prefs.getString('today_cache');
@@ -219,7 +254,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     return today == null ? '' : 'À jour à ${hhmm(today.fetchedAt)}';
   }
 
-  Future<String?> _saveHaSettings(String url, String token) async {
+  Future<String?> _saveHaSettings(String url, String token, String agent) async {
     final base = normalizeHaUrl(url);
     if (base == null) return 'Adresse invalide.';
     final secret = token.trim().isEmpty ? _haToken : token.trim();
@@ -233,14 +268,23 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     }
     await widget.prefs.setString('ha_url', base);
     await widget.prefs.setString('ha_token', secret);
+    final agentId = agent.trim();
+    if (agentId != _haAgent) {
+      await widget.prefs.setString('ha_agent', agentId);
+      _conversationId = null;
+    }
     unawaited(_refreshToday());
     return null;
   }
 
-  void _openPanel() {
+  /// [chat]: Noxo was called from his island, so the panel opens on the chat.
+  void _openPanel({bool chat = false}) {
     if (_panelOpen) return;
     widget.desktop.enterPanel(widget.brain.pos, kPanelSize);
-    setState(() => _panelOpen = true);
+    setState(() {
+      _panelOpen = true;
+      _panelChat = chat;
+    });
     _watchOutsideClick();
     unawaited(_markBriefRead());
     unawaited(_refreshToday());
@@ -498,6 +542,11 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 status: _todayStatus,
                 configured: _haConfigured,
                 haUrl: _haUrl,
+                haAgent: _haAgent,
+                startInChat: _panelChat,
+                messages: List.unmodifiable(_chat),
+                thinking: _thinking,
+                onSend: _sendChat,
                 onRefresh: _refreshToday,
                 onClose: _closePanel,
                 onSaveSettings: _saveHaSettings,
@@ -507,6 +556,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 desktop: widget.desktop,
                 onMouseOver: (over) => widget.desktop.setClickThrough(!over),
                 onDoubleClick: _openPanel,
+                onCall: () => _openPanel(chat: true),
                 onToggleNest: _toggleNest,
                 onNestMoved: () {
                   widget.prefs.setDouble('nest_x', widget.brain.nestX);
