@@ -72,72 +72,89 @@ Un **assistant de vie** nommé **Noxo**, un hibou :
   ou VPN (Tailscale) — non encore précisé.
 - **Mode sage / espiègle** : simple réglage pour l'instant.
 
-## 5. État actuel du code (étape 1 : compagnon de bureau Windows)
+## 5. État actuel du code
 
-Dépôt : `antoine28boel/nox`, branche `main`. Le build GitHub Actions
-(`.github/workflows/build-windows.yml`) passe : analyse, 10 tests, build
-Windows, artefact `noxo-windows` (zip contenant `noxo.exe` + DLL + `data/`).
+**Branche de référence : `release`** (et `claude/optimistic-hypatia-8nfz82`,
+identique). `main` est en retard : c'est une ancienne version (panneau sans
+onglets) ; ne plus partir de `main`. Le dépôt a été renommé
+`antoine28boel/noxo` (l'ancienne adresse `nox` redirige). 97 tests
+(`flutter test`), `flutter analyze` sans remarque.
 
 | Fichier | Rôle |
 |---|---|
-| `lib/main.dart` | Fenêtre transparente (window_manager 0.5 + flutter_acrylic), icône de notification (tray_manager 0.5), réglages (shared_preferences), lancement au démarrage |
-| `lib/noxo/brain.dart` | Comportement pur Dart : états `perched/flying/falling/dragged`, perchage, vol en arc, chute, lancer, sommeil, plein écran, modes |
-| `lib/noxo/desktop.dart` | Interface abstraite du bureau (coordonnées en pixels physiques) |
-| `lib/win/win_desktop.dart` | Implémentation Win32 (FFI, package `win32` 5.x) |
-| `lib/noxo/owl_painter.dart` | Dessin de Noxo style A (coordonnées du croquis SVG, pieds en (200,408), échelle 0.4) |
-| `lib/noxo/pose.dart` | Paramètres de pose par image |
-| `lib/noxo/noxo_view.dart` | Ticker : met à jour le cerveau, déplace la fenêtre, gère le clic-traversant |
-| `windows/runner/main.cpp` | Fenêtre « Noxo » 200×180, `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` |
-| `test/brain_test.dart` | 10 tests du comportement avec un faux bureau |
+| `lib/main.dart` | Fenêtre transparente, icône de notification, réglages (shared_preferences), démarrage auto, panneau, chat (HA puis IA du PC), reprise des réglages de « Nox » |
+| `lib/noxo/brain.dart` | Comportement pur Dart : perchage, vol, chute, lancer, sommeil, plein écran, modes, bêtises, île (`docked`) |
+| `lib/noxo/noxo_view.dart` | Ticker à cadence adaptative, déplacement de la fenêtre, clic-traversant ; clic sur l'île → `onCall` (chat) |
+| `lib/noxo/owl_painter.dart`, `pose.dart`, `feather.dart`, `desktop.dart` | Dessin (style A), pose, plume, interface du bureau |
+| `lib/win/win_desktop.dart`, `native.dart` | Win32 (FFI) : fenêtres, icônes du bureau, plume, registre (`hasStartupEntry`) |
+| `lib/update/updater.dart` | Mises à jour : release `build-N`, archive `noxo-windows.zip`, installation par la nouvelle version elle-même |
+| `lib/assistant/today_panel.dart` | Panneau à 7 onglets + Réglages (HA, agent, IA hors ligne, Vikunja, Spotify, Actual) |
+| `lib/assistant/panel_tabs.dart` | Onglets Suivi, Musique, Maison, Agenda, Tâches, Budget |
+| `lib/assistant/chat.dart`, `chat_view.dart` | Onglet Discuter : messages, réponses de HA (`/api/conversation/process`), choix de l'agent, réglages IA hors ligne |
+| `lib/assistant/ollama.dart` | Client Ollama (réponse en flux, outils, chargement/déchargement) et installation automatique d'Ollama + modèle |
+| `lib/assistant/home_tools.dart` | Outils maison donnés à Ollama : chercher, état, commander (serrures/alarmes refusées) |
+| `lib/assistant/ha_client.dart` | API REST + WebSocket de HA (états, services, agenda, tâches, tableaux de bord, conversation, pipeline vocal préféré) |
+| `lib/assistant/actual_client.dart`, `budget.dart` | Actual Budget via actual-http-api |
+| `lib/assistant/vikunja*.dart`, `spotify*.dart` | Suivi de projets (Vikunja), musique (API Spotify, PKCE) |
+| `lib/assistant/brief.dart`, `today.dart` | Brief du matin (IA de HA ou texte hors ligne), données du jour, cache |
 
-Comportements livrés : perchage sur la barre de titre de la fenêtre active
-(hors boutons), suivi quand la fenêtre bouge, envol si secouée, chute si
-fermée/réduite/agrandie/recouverte, atterrissage sur la barre des tâches,
-regard qui suit la souris, clignements, respiration, caresse (yeux ^ ^),
-glisser-lancer, sommeil après inactivité (2 min sage / 4 min espiègle),
-masqué en plein écran, menu : modes, rappeler, démarrage auto, quitter.
+### Ce que Noxo fait aujourd'hui
 
-**Mode travail (île)** : état `docked` ; Noxo vole en haut au centre de
-l'écran et devient une pilule sombre façon « dynamic island » avec seulement
-ses yeux (suivent la souris, clignent, dorment). Clic = il est « appelé »
-(l'île s'agrandit, `brain.listening`) : c'est là que se branchera le panneau
-assistant. Réglage persistant (`work` dans shared_preferences).
-Transition « plongeon » (fente → Noxo s'y engouffre → île + yeux). L'île se
-glisse le long du haut ou du bas de l'écran (`nest_x`, `nest_bottom`) et se
-rétracte en trait quand la souris approche (survol 0,5 s pour la rappeler).
+- **Hibou de bureau** : perché sur la fenêtre active, vole, tombe, se laisse
+  lancer, suit la souris des yeux, caresse, s'endort, se cache en plein
+  écran ; modes sage / espiègle ; bêtises désactivables (chasser le curseur,
+  plume, picorer une icône, pousser une fenêtre) ; cadence adaptative pour
+  la batterie.
+- **Île (mode travail)** : clic droit sur Noxo ; île noire en haut ou en bas,
+  déplaçable, rétractable ; **un clic ouvre le chat**.
+- **Panneau** (double-clic sur Noxo, clic sur l'île ou menu) : Discuter,
+  Suivi (Vikunja), Musique (Spotify / lecteurs HA), Maison (tableau de bord
+  HA en tuiles), Agenda (+ brief), Tâches (listes HA), Budget (Actual :
+  soldes, enveloppes, opérations, saisie de dépense).
+- **Chat** :
+  - par défaut, l'agent de l'**assistant vocal préféré de HA** (Paramètres →
+    Assistants vocaux), ou un agent choisi dans Réglages → Discussion ;
+  - si HA est injoignable, ou si « Toujours utiliser l'IA du PC » est
+    coché : **Ollama sur le PC**, qui commande la maison via HA (outils
+    `home_tools.dart`) quand HA est joignable ; HA prend le relais si
+    Ollama échoue ;
+  - réponses d'Ollama affichées mot à mot ; modèle **chargé au clic sur
+    l'île, déchargé à sa fermeture** (`keep_alive` -1 / 0).
+- **IA hors ligne** : au premier lancement, Noxo installe Ollama (installateur
+  silencieux, sans droits admin) et le modèle (`qwen2.5:7b` par défaut,
+  modifiable), réessaie toutes les heures si interrompu.
+- **Brief du matin**, **mises à jour** proposées par Noxo (accepter /
+  refuser), **lancement au démarrage**.
+- **Renommage Nox → Noxo** : au premier lancement, Noxo copie les réglages
+  de `%APPDATA%\fr.nox\nox` et remplace l'entrée de démarrage « Nox ». Une
+  Nox installée ne voit pas les mises à jour Noxo (nom d'archive différent) :
+  installation manuelle une fois.
 
-### Jamais testé sur un vrai Windows — à vérifier en premier
+### Non vérifié sur un vrai Windows
 
-1. **Transparence** : pas de rectangle noir/blanc autour de Noxo.
-2. **Clic-traversant** : `setIgnoreMouseEvents` de window_manager ajoute
-   `WS_EX_LAYERED | WS_EX_TRANSPARENT` ; vérifier que Noxo **reste visible**
-   quand la souris n'est pas sur lui. Sinon : poser `WS_EX_LAYERED` +
-   `SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA)` une fois au
-   démarrage et ne basculer que `WS_EX_TRANSPARENT`.
-3. Brève apparition au démarrage (fenêtre montrée avant la config) : si
-   gênant, cacher la fenêtre au lancement (`flutter_window.cpp`).
-4. Menu de l'icône avec `WS_EX_NOACTIVATE` : vérifier qu'il se ferme bien.
-5. Multi-écrans / mise à l'échelle différente par écran.
-6. Consommation CPU (ticker 60 fps en continu ; réduire quand il dort).
-7. Les « z » du sommeil utilisent une police (OK sous Windows).
+Installation silencieuse d'Ollama (paramètres Inno Setup), chargement /
+déchargement du modèle, outils maison avec le vrai HA, reprise des
+réglages et du démarrage depuis « Nox ».
 
-## 6. Prochaines étapes prévues
+## 6. Prochaines étapes
 
-- **Étape 2 — mode espiègle** : chasse au curseur (le hibou fond sur la
-  « souris »), plume laissée sur le bureau, picorer une icône, pousser
-  légèrement une fenêtre ; tout désactivable.
-- Puis : notifications apportées dans le bec, rappels (tape à la vitre, fait
-  les cent pas), réaction à la météo/budget, panneau au double-clic (brief,
-  agenda, budget, chat).
-- Ensuite : app Android (bulle), synchro HA, Actual Budget.
+- **Ollama sur le serveur** (192.168.0.222, Docker, modèles sur
+  `/mnt/data/ollama`) et intégration Ollama dans HA, pour une même IA
+  partout (maison, hibou physique, apps). Faire d'abord memtest86+ (RAM
+  suspecte).
+- **Orchestrateur** : étendre les outils au-delà de la maison (`pc.*`,
+  agenda, tâches, budget, mémoire) ; confirmation dans l'île pour les
+  actions sensibles.
+- Notifications apportées dans le bec, rappels, réaction météo/budget.
+- App Android (bulle), synchro via HA, Tailscale pour l'accès extérieur.
 
-### Infos encore à demander à l'utilisateur (pour la partie HA)
+### Infrastructure (d'après les notes de l'utilisateur)
 
-1. Installation HA (HAOS, Docker…) et HACS ?
-2. Entités agenda (`calendar.xxx`) et météo.
-3. Intégration IA dans HA (Anthropic, OpenAI, Ollama…) ?
-4. Service de notification (`notify.mobile_app_xxx`).
-5. Version d'Actual Budget et où il tourne.
+- Serveur `DomotX-ToinouToya` (192.168.0.222) : Debian 11, 8 cœurs, GPU
+  Intel intégré, 15 Gio de RAM, SSD 500 Go + 1 To (`/mnt/data`, Jellyfin),
+  Docker. RAM soupçonnée défaillante (corruptions les 04, 09 et 14/11).
+- VM Home Assistant OS (VirtualBox) : 192.168.0.10, 4 vCPU, 4 Gio, HA
+  2026.11.1. IA actuelle dans HA : Google Generative AI.
 
 ## 7. Démarrer en local (Windows)
 
@@ -145,7 +162,7 @@ Prérequis : Flutter stable (le CI utilise 3.47.9) et Visual Studio 2022 avec
 la charge « Développement Desktop en C++ ».
 
 ```bash
-git clone https://github.com/antoine28boel/nox.git
+git clone -b release https://github.com/antoine28boel/noxo.git
 cd noxo
 flutter pub get
 flutter test
@@ -153,11 +170,29 @@ flutter run -d windows
 ```
 
 Commits : terminer les messages par les lignes d'attribution habituelles de
-Claude Code ; pousser sur `main` (le CI produit l'artefact).
+Claude Code.
 
 ## 8. Compilation : uniquement sur demande
 
-L'utilisateur ne veut plus de build à chaque push. Le workflow ne se lance que
-sur un push de la branche `release` ou via « Run workflow » (Actions). Quand
-il demande une compilation : `git push origin main:release` (après avoir
-poussé `main`). Chaque build publie une release `build-N` proposée par Noxo.
+Le workflow ne se lance que sur un push de la branche `release` ou via
+« Run workflow » (Actions). Quand l'utilisateur demande une compilation :
+pousser le travail sur `release` (avance rapide). Chaque build publie une
+release `build-N` que Noxo propose. Dernier build : n° 22.
+
+## 9. Architecture visée
+
+```
+Téléphones (HA Compagnon) ─ position, capteurs, notifications ─┐
+Noxo PC / Noxo Android ── API + WebSocket (Tailscale dehors) ──┤
+Hibou physique (voix « Hey Noxo », yeux) ─ Wyoming/ESPHome ────┤
+                                                               ▼
+           Home Assistant (VM) ── agent de conversation ── Ollama (serveur)
+           états, agenda, tâches, notify, pipeline vocal      même modèle
+           Actual, Vikunja à côté                              partout
+```
+
+- En ligne : Noxo utilise l'agent de HA ou son orchestrateur (LLM + outils
+  exécutés via l'API de HA).
+- Hors ligne : Ollama du PC + cache local ; pas d'action sur la maison.
+- Synchro : données locales envoyées à HA / Actual / Vikunja dès que
+  joignables. La perche héberge le serveur et recharge le hibou physique.
