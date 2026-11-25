@@ -144,8 +144,14 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
       _thinking = true;
     });
     ChatMessage? answer;
+    // Chosen in the settings: the AI on this PC first, Home Assistant if it fails.
+    ChatMessage? local;
+    if (_offlineFirst) {
+      local = await _askOfflineAi("Noxo n'a pas pu répondre");
+      if (!local.error) answer = local;
+    }
     var haProblem = "Noxo n'est pas relié à Home Assistant";
-    if (_haConfigured) {
+    if (answer == null && _haConfigured) {
       try {
         final reply = await HaClient(
           _haUrl,
@@ -160,12 +166,23 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
       }
     }
     // Home Assistant away: the AI on this PC answers instead.
-    final message = answer ?? await _askOfflineAi(haProblem);
+    final message =
+        answer ??
+        (local != null
+            ? ChatMessage(text: '$haProblem et l\'IA du PC ne répond pas.', fromUser: false, error: true)
+            : await _askOfflineAi(haProblem));
     if (!mounted) return;
     setState(() {
       _chat.add(message);
       _thinking = false;
     });
+  }
+
+  bool get _offlineFirst => widget.prefs.getBool('ollama_first') ?? false;
+
+  Future<void> _saveOfflineFirst(bool value) async {
+    await widget.prefs.setBool('ollama_first', value);
+    if (mounted) setState(() {});
   }
 
   String get _offlineModel => widget.prefs.getString('ollama_model') ?? kDefaultOllamaModel;
@@ -743,6 +760,8 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 offlineAi: _offlineAi,
                 offlineModel: _offlineModel,
                 onSaveOfflineModel: _saveOfflineModel,
+                offlineFirst: _offlineFirst,
+                onOfflineFirst: _saveOfflineFirst,
               )
             : NoxoView(
                 brain: widget.brain,

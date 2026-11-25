@@ -173,7 +173,14 @@ class _Bubble extends StatelessWidget {
 /// The offline AI (Ollama on this PC): where its installation stands and
 /// which model it uses.
 class OfflineAiForm extends StatefulWidget {
-  const OfflineAiForm({super.key, required this.setup, required this.model, required this.onSave});
+  const OfflineAiForm({
+    super.key,
+    required this.setup,
+    required this.model,
+    required this.onSave,
+    this.first = false,
+    this.onFirst,
+  });
 
   final OllamaSetup setup;
   final String model;
@@ -181,12 +188,17 @@ class OfflineAiForm extends StatefulWidget {
   /// Saves the model and installs it if needed.
   final void Function(String model) onSave;
 
+  /// Answers first, even when Home Assistant is reachable.
+  final bool first;
+  final void Function(bool value)? onFirst;
+
   @override
   State<OfflineAiForm> createState() => _OfflineAiFormState();
 }
 
 class _OfflineAiFormState extends State<OfflineAiForm> {
   late final _model = TextEditingController(text: widget.model);
+  late bool _first = widget.first;
 
   @override
   void dispose() {
@@ -210,6 +222,22 @@ class _OfflineAiFormState extends State<OfflineAiForm> {
             ),
             const SizedBox(height: 8),
             if (setup.status.isNotEmpty) PanelNote(setup.status),
+            if (widget.onFirst case final onFirst?)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeThumbColor: panelAccent,
+                title: const Text("Toujours utiliser l'IA du PC"),
+                subtitle: const Text(
+                  'Même quand Home Assistant est joignable (elle ne commande pas la maison). '
+                  'Home Assistant répond si elle échoue.',
+                  style: TextStyle(color: panelMuted, fontSize: 12),
+                ),
+                value: _first,
+                onChanged: (value) {
+                  setState(() => _first = value);
+                  onFirst(value);
+                },
+              ),
             const SizedBox(height: 8),
             TextField(
               controller: _model,

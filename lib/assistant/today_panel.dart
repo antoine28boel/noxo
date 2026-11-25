@@ -69,6 +69,8 @@ class TodayPanel extends StatefulWidget {
     this.offlineAi,
     this.offlineModel = kDefaultOllamaModel,
     this.onSaveOfflineModel,
+    this.offlineFirst = false,
+    this.onOfflineFirst,
     this.memory,
   });
 
@@ -129,6 +131,10 @@ class TodayPanel extends StatefulWidget {
   final OllamaSetup? offlineAi;
   final String offlineModel;
   final void Function(String model)? onSaveOfflineModel;
+
+  /// The PC's AI answers first, even when Home Assistant is reachable.
+  final bool offlineFirst;
+  final void Function(bool value)? onOfflineFirst;
 
   /// Folded sections and chosen dashboard; kept in memory only when null.
   final PanelMemory? memory;
@@ -304,7 +310,13 @@ class _TodayPanelState extends State<TodayPanel> {
         if ((widget.client, widget.onSaveAgent) case (final client?, final onSave?))
           AgentForm(client: client, agent: widget.haAgent, onSave: onSave),
         if ((widget.offlineAi, widget.onSaveOfflineModel) case (final ai?, final onSave?))
-          OfflineAiForm(setup: ai, model: widget.offlineModel, onSave: onSave),
+          OfflineAiForm(
+            setup: ai,
+            model: widget.offlineModel,
+            onSave: onSave,
+            first: widget.offlineFirst,
+            onFirst: widget.onOfflineFirst,
+          ),
         _ServerForm(
           title: 'Vikunja',
           intro:
