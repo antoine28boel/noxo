@@ -161,3 +161,63 @@ L'utilisateur ne veut plus de build à chaque push. Le workflow ne se lance que
 sur un push de la branche `release` ou via « Run workflow » (Actions). Quand
 il demande une compilation : `git push origin main:release` (après avoir
 poussé `main`). Chaque build publie une release `build-N` proposée par Noxo.
+
+## 9. Assistant IA (à venir)
+
+État : Noxo n'a encore ni IA ni contrôle du PC ni recherche web. Tout est
+faisable : Win32 déjà en place (`win32`/FFI), IA locale via **Ollama**
+(API `localhost:11434`, hors ligne ; petit modèle 3B–7B sur portable sans GPU
+dédié), recherche via **SearXNG** auto-hébergé ou IA de HA. Point d'entrée :
+le panneau de l'île quand Noxo est appelé (`brain.listening`).
+
+### Fonctionnalités
+
+- **Dialogue** : chat dans le panneau de l'île ; voix (« Hey Noxo »,
+  Whisper pour l'écoute, Piper pour la parole) ; questions sur l'écran
+  (fenêtre active ou capture analysée).
+- **Contrôle du PC** : lancer/fermer apps, ouvrir fichiers et sites ;
+  gérer les fenêtres (disposition, bureaux virtuels, mode concentration) ;
+  volume, luminosité, veille, Wi-Fi ; macros (clics, saisie) ; organisation
+  des fichiers (ranger les téléchargements, renommer, retrouver).
+- **Recherche et info** : recherche web avec synthèse et sources ; résumé
+  de page, PDF, mail ; recherche dans ses propres documents (indexation
+  locale, RAG) ; veille (prix, sujet, site) avec alerte.
+- **Productivité** : rédaction, reformulation, traduction ; presse-papiers
+  intelligent (historique, transformation) ; notes et tâches en langage
+  naturel ; minuteurs, pomodoro.
+- **Mémoire** : préférences, habitudes, faits sur l'utilisateur, en local,
+  consultables et effaçables ; contexte de la journée.
+- **Proactivité** : suggestions selon le contexte (réunion proche, enveloppe
+  basse, batterie) ; routines matin et soir.
+
+### Intégration
+
+```
+Entrées : voix / chat / clic île / événements (HA, agenda, système)
+              ↓
+      Orchestrateur (Dart, dans Noxo)
+              ↓
+   LLM local (Ollama) avec "tool calling"
+              ↓
+   Outils : pc.* | web.* | fichiers.* | ha.* | actual.* | memoire.*
+              ↓
+   Sorties : panneau, voix, notification, comportement du hibou
+```
+
+- **Orchestrateur** : reçoit la demande, ajoute le contexte (heure, fenêtre
+  active, mémoire), envoie au LLM, exécute les outils demandés, renvoie le
+  résultat au modèle jusqu'à la réponse finale.
+- **Outils** : fonctions Dart décrites au modèle (nom, paramètres,
+  description). `pc.*` → Win32, `ha.*` → `lib/assistant/ha_client.dart`,
+  `web.*` → SearXNG.
+- **Permissions** : lecture libre ; action réversible libre ou à confirmer ;
+  action destructive (supprimer, envoyer, payer) → confirmation obligatoire
+  dans l'île.
+- **Mémoire** : SQLite + embeddings (via Ollama ou petit modèle dédié).
+- **Hibou = interface** : l'état de l'IA pilote `brain` (réfléchit : tête
+  penchée ; cherche : vole vers le navigateur ; agit : picore la fenêtre
+  visée ; attend une confirmation : regarde le curseur).
+- **Hors ligne** : le cœur tourne en local ; web et HA distant sont des
+  outils en plus, désactivés sans réseau.
+- **Android** : même orchestrateur Dart ; `pc.*` remplacé par des outils
+  Android ; le LLM peut tourner sur le PC ou le serveur HA via le réseau.
