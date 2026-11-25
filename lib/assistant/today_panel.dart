@@ -33,7 +33,7 @@ class TodayPanel extends StatefulWidget {
   /// Last data fetched (possibly from the offline cache), or null.
   final TodayData? data;
 
-  /// Today's brief, if Nox has brought one.
+  /// Today's brief, if Noxo has brought one.
   final Brief? brief;
 
   /// One line about freshness: "À jour à 09:12", "Hors ligne…".
@@ -155,7 +155,7 @@ class _TodayPanelState extends State<TodayPanel> {
           ]),
         if (!widget.configured)
           const _Section(title: 'Connexion', children: [
-            Text('Nox n\'est pas encore relié à Home Assistant. Ouvre « Réglages ».'),
+            Text('Noxo n\'est pas encore relié à Home Assistant. Ouvre « Réglages ».'),
           ])
         else if (data == null)
           const _Section(title: 'En attente', children: [

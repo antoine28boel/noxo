@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/update/updater.dart';
+import 'package:noxo/update/updater.dart';
 
 Map<String, Object?> release({
   String tag = 'build-12',
-  String name = 'nox-windows.zip',
-  String url = 'https://github.com/antoine28boel/nox/releases/download/build-12/nox-windows.zip',
+  String name = 'noxo-windows.zip',
+  String url = 'https://github.com/antoine28boel/nox/releases/download/build-12/noxo-windows.zip',
   String? digest,
 }) =>
     {
@@ -20,7 +20,7 @@ void main() {
     test('offers a newer build', () {
       final u = parseRelease(release(digest: 'sha256:ABCDEF'), 11)!;
       expect(u.build, 12);
-      expect(u.url.path, endsWith('/build-12/nox-windows.zip'));
+      expect(u.url.path, endsWith('/build-12/noxo-windows.zip'));
       expect(u.sha256, 'abcdef');
     });
 
@@ -34,7 +34,7 @@ void main() {
     });
 
     test('refuses a download from anywhere else', () {
-      expect(parseRelease(release(url: 'https://example.com/nox-windows.zip'), 1), isNull);
+      expect(parseRelease(release(url: 'https://example.com/noxo-windows.zip'), 1), isNull);
       expect(
           parseRelease(
               release(url: 'http://github.com/antoine28boel/nox/releases/download/x.zip'), 1),
@@ -54,7 +54,7 @@ void main() {
     const hash = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
 
     test('reads the hash line', () {
-      const out = 'SHA256 hash of C:\\tmp\\nox-windows.zip:\r\n$hash\r\n'
+      const out = 'SHA256 hash of C:\\tmp\\noxo-windows.zip:\r\n$hash\r\n'
           'CertUtil: -hashfile command completed successfully.\r\n';
       expect(parseCertutilHash(out), hash);
     });
@@ -71,23 +71,23 @@ void main() {
 
   group('parseInstallArgs', () {
     test('reads the installer command line', () {
-      final r = parseInstallArgs(['--nox-install', r'C:\Nox', '4242'])!;
-      expect(r.target, r'C:\Nox');
+      final r = parseInstallArgs(['--noxo-install', r'C:\Noxo', '4242'])!;
+      expect(r.target, r'C:\Noxo');
       expect(r.oldPid, 4242);
     });
 
     test('a normal start is not an install', () {
       expect(parseInstallArgs([]), isNull);
-      expect(parseInstallArgs(['--nox-install', r'C:\Nox']), isNull);
-      expect(parseInstallArgs(['--nox-install', r'C:\Nox', 'abc']), isNull);
-      expect(parseInstallArgs(['--other', r'C:\Nox', '1']), isNull);
+      expect(parseInstallArgs(['--noxo-install', r'C:\Noxo']), isNull);
+      expect(parseInstallArgs(['--noxo-install', r'C:\Noxo', 'abc']), isNull);
+      expect(parseInstallArgs(['--other', r'C:\Noxo', '1']), isNull);
     });
   });
 
-  test('copyOrder copies nox.exe last', () {
+  test('copyOrder copies noxo.exe last', () {
     expect(
-      copyOrder(['nox.exe', r'data\app.so', 'flutter_windows.dll', r'data\icudtl.dat']),
-      [r'data\app.so', r'data\icudtl.dat', 'flutter_windows.dll', 'nox.exe'],
+      copyOrder(['noxo.exe', r'data\app.so', 'flutter_windows.dll', r'data\icudtl.dat']),
+      [r'data\app.so', r'data\icudtl.dat', 'flutter_windows.dll', 'noxo.exe'],
     );
   });
 }

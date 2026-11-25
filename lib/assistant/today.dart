@@ -1,4 +1,4 @@
-// What Nox knows about today: agenda, weather, tasks.
+// What Noxo knows about today: agenda, weather, tasks.
 //
 // Pure Dart: parsing of Home Assistant's answers and the offline cache
 // format, so it can be tested without a network.
@@ -121,7 +121,7 @@ class TodayData {
   }
 }
 
-/// The Home Assistant entities Nox reads, found in `/api/states`.
+/// The Home Assistant entities Noxo reads, found in `/api/states`.
 class HaEntities {
   const HaEntities({this.calendars = const {}, this.todos = const {}, this.weather});
 

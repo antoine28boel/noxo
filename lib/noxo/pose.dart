@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 
-/// Everything the painter needs to draw Nox for one frame.
-class NoxPose extends ChangeNotifier {
+/// Everything the painter needs to draw Noxo for one frame.
+class NoxoPose extends ChangeNotifier {
   bool hidden = false;
   double time = 0;
   bool sleeping = false;
@@ -35,7 +35,7 @@ class NoxPose extends ChangeNotifier {
   /// 0 = full owl, 1 = tucked into the "island" at the top of the screen.
   double island = 0;
 
-  /// 0 = island with just the eyes, 1 = island opened (Nox listens).
+  /// 0 = island with just the eyes, 1 = island opened (Noxo listens).
   double expand = 0;
 
   /// 0 = island shown, 1 = pulled back to a thin line (cursor nearby).
@@ -50,14 +50,14 @@ class NoxPose extends ChangeNotifier {
 }
 
 /// Phases of the trip into the nest, on the `island` 0..1 scale:
-/// a slot opens (0 → [kSlotOpen]), Nox plunges into it ([kSlotOpen] →
+/// a slot opens (0 → [kSlotOpen]), Noxo plunges into it ([kSlotOpen] →
 /// [kPlungeEnd]), then the slot widens into the island and his eyes light up.
 const kSlotOpen = 0.25;
 const kPlungeEnd = 0.7;
 
 double _ease(double t) => t * t * (3 - 2 * t);
 
-/// How far Nox has plunged into the slot (0 = not yet, 1 = gone inside).
+/// How far Noxo has plunged into the slot (0 = not yet, 1 = gone inside).
 double plungeProgress(double island) =>
     _ease(((island - kSlotOpen) / (kPlungeEnd - kSlotOpen)).clamp(0.0, 1.0));
 
@@ -75,7 +75,7 @@ Size islandSize(double island, double expand) {
 /// Gap between the top of the screen and the island (logical px).
 const kIslandTop = 6.0;
 
-/// The island inside Nox's window (logical px). Anchored to the top or the
+/// The island inside Noxo's window (logical px). Anchored to the top or the
 /// bottom of the window depending on the screen edge it sits on; [retract]
 /// pulls it back to a thin line against that edge.
 Rect islandBox({

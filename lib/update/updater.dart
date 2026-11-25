@@ -3,16 +3,16 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
-/// Build number of this copy of Nox, set by the CI
-/// (`--dart-define=NOX_BUILD=<run number>`). 0 for a local build, which
+/// Build number of this copy of Noxo, set by the CI
+/// (`--dart-define=NOXO_BUILD=<run number>`). 0 for a local build, which
 /// never updates itself.
-const kNoxBuild = int.fromEnvironment('NOX_BUILD');
+const kNoxoBuild = int.fromEnvironment('NOXO_BUILD');
 
 const _latestRelease = 'https://api.github.com/repos/antoine28boel/nox/releases/latest';
 const _downloadPrefix = 'https://github.com/antoine28boel/nox/releases/download/';
-const _assetName = 'nox-windows.zip';
+const _assetName = 'noxo-windows.zip';
 
-/// A newer build of Nox published by the CI.
+/// A newer build of Noxo published by the CI.
 class UpdateInfo {
   const UpdateInfo({required this.build, required this.url, this.sha256});
 
@@ -60,10 +60,10 @@ String? parseCertutilHash(String output) {
 }
 
 /// Asks GitHub whether a newer build exists. Null if not, or on any error
-/// (offline, rate limit…): Nox must keep working without the network.
+/// (offline, rate limit…): Noxo must keep working without the network.
 Future<UpdateInfo?> checkForUpdate() async {
-  if (kNoxBuild <= 0) return null;
-  final client = HttpClient()..userAgent = 'nox-updater';
+  if (kNoxoBuild <= 0) return null;
+  final client = HttpClient()..userAgent = 'noxo-updater';
   try {
     final request =
         await client.getUrl(Uri.parse(_latestRelease)).timeout(const Duration(seconds: 15));
@@ -75,7 +75,7 @@ Future<UpdateInfo?> checkForUpdate() async {
     }
     final body =
         await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 30));
-    return parseRelease(jsonDecode(body), kNoxBuild);
+    return parseRelease(jsonDecode(body), kNoxoBuild);
   } catch (_) {
     return null;
   } finally {
@@ -84,28 +84,28 @@ Future<UpdateInfo?> checkForUpdate() async {
 }
 
 // How an update is installed, without any script:
-//  1. the running Nox downloads the zip, checks it and unpacks it into
-//     %LOCALAPPDATA%\Nox\update\build-N;
-//  2. he starts the new nox.exe from there with `--nox-install <dir> <pid>`
+//  1. the running Noxo downloads the zip, checks it and unpacks it into
+//     %LOCALAPPDATA%\Noxo\update\build-N;
+//  2. he starts the new noxo.exe from there with `--noxo-install <dir> <pid>`
 //     and quits;
-//  3. that new Nox waits for the old one to be gone, copies itself over the
-//     install folder (nox.exe last), starts the installed nox.exe and quits,
+//  3. that new Noxo waits for the old one to be gone, copies itself over the
+//     install folder (noxo.exe last), starts the installed noxo.exe and quits,
 //     before showing any window;
-//  4. the installed Nox deletes the unpacked copy.
-// Every step is written to %LOCALAPPDATA%\Nox\update.log.
+//  4. the installed Noxo deletes the unpacked copy.
+// Every step is written to %LOCALAPPDATA%\Noxo\update.log.
 
-const _installFlag = '--nox-install';
+const _installFlag = '--noxo-install';
 
-/// What the copy started with `--nox-install` has to do.
+/// What the copy started with `--noxo-install` has to do.
 class InstallRequest {
   const InstallRequest(this.target, this.oldPid);
 
-  /// Folder of the Nox being replaced.
+  /// Folder of the Noxo being replaced.
   final String target;
   final int oldPid;
 }
 
-/// Reads the command line of the unpacked new Nox. Null for a normal start.
+/// Reads the command line of the unpacked new Noxo. Null for a normal start.
 InstallRequest? parseInstallArgs(List<String> args) {
   if (args.length != 3 || args[0] != _installFlag) return null;
   final pid = int.tryParse(args[2]);
@@ -114,26 +114,26 @@ InstallRequest? parseInstallArgs(List<String> args) {
 }
 
 /// Paths of [files] (relative to the unpacked folder) in copy order:
-/// nox.exe last, so a copy cut short leaves the old executable in place.
+/// noxo.exe last, so a copy cut short leaves the old executable in place.
 List<String> copyOrder(Iterable<String> files) {
   final list = [...files]..sort();
-  final exe = list.where((f) => f.toLowerCase() == 'nox.exe').toList();
-  list.removeWhere((f) => f.toLowerCase() == 'nox.exe');
+  final exe = list.where((f) => f.toLowerCase() == 'noxo.exe').toList();
+  list.removeWhere((f) => f.toLowerCase() == 'noxo.exe');
   return [...list, ...exe];
 }
 
 String get _sep => Platform.pathSeparator;
 
-String _noxDataDir() {
+String _noxoDataDir() {
   final local = Platform.environment['LOCALAPPDATA'];
   final base = local != null && local.isNotEmpty ? local : Directory.systemTemp.path;
-  return '$base${_sep}Nox';
+  return '$base${_sep}Noxo';
 }
 
-String get _stagingRoot => '${_noxDataDir()}${_sep}update';
+String get _stagingRoot => '${_noxoDataDir()}${_sep}update';
 
 /// Where the steps of the last updates are written.
-String get updateLogPath => '${_noxDataDir()}${_sep}update.log';
+String get updateLogPath => '${_noxoDataDir()}${_sep}update.log';
 
 void updateLog(String message) {
   try {
@@ -147,9 +147,9 @@ void updateLog(String message) {
 }
 
 /// Unpacks [zip] into [dest] with Windows' own tar, or PowerShell if that
-/// fails. True when a nox.exe came out.
+/// fails. True when a noxo.exe came out.
 Future<bool> _unpack(File zip, Directory dest) async {
-  final exe = File('${dest.path}${_sep}nox.exe');
+  final exe = File('${dest.path}${_sep}noxo.exe');
   final root = Platform.environment['SystemRoot'] ?? r'C:\Windows';
   // The full path: Git's tar, often first in PATH, cannot read zips.
   final tar = await Process.run('$root\\System32\\tar.exe', ['-xf', zip.path, '-C', dest.path]);
@@ -166,12 +166,12 @@ Future<bool> _unpack(File zip, Directory dest) async {
   return exe.existsSync();
 }
 
-/// Downloads [update], checks and unpacks it, then starts the new Nox that
+/// Downloads [update], checks and unpacks it, then starts the new Noxo that
 /// will replace this one. Returns null when the caller must now quit, or
 /// what went wrong.
 Future<String?> downloadAndInstall(UpdateInfo update) async {
-  updateLog('Mise à jour ${update.build} acceptée (version actuelle $kNoxBuild).');
-  final client = HttpClient()..userAgent = 'nox-updater';
+  updateLog('Mise à jour ${update.build} acceptée (version actuelle $kNoxoBuild).');
+  final client = HttpClient()..userAgent = 'noxo-updater';
   try {
     final dir = Directory('$_stagingRoot${_sep}build-${update.build}');
     if (dir.existsSync()) dir.deleteSync(recursive: true);
@@ -205,7 +205,7 @@ Future<String?> downloadAndInstall(UpdateInfo update) async {
     } catch (_) {}
 
     final target = File(Platform.resolvedExecutable).parent.path;
-    final staged = '${dir.path}${_sep}nox.exe';
+    final staged = '${dir.path}${_sep}noxo.exe';
     await Process.start(staged, [_installFlag, target, '$pid'],
         workingDirectory: dir.path, mode: ProcessStartMode.detached);
     updateLog('Lancé $staged pour installer dans $target.');
@@ -240,8 +240,8 @@ void _waitForExit(int id, Duration timeout) {
   }
 }
 
-/// Run by the unpacked new Nox: replaces the old files, starts the
-/// installed Nox. Never shows a window; the caller exits right after.
+/// Run by the unpacked new Noxo: replaces the old files, starts the
+/// installed Noxo. Never shows a window; the caller exits right after.
 Future<void> finishInstall(InstallRequest request) async {
   final source = File(Platform.resolvedExecutable).parent;
   updateLog('Installation depuis ${source.path} vers ${request.target}.');
@@ -252,7 +252,7 @@ Future<void> finishInstall(InstallRequest request) async {
       if (entity is File) entity.path.substring(source.path.length + 1),
   ];
   var copied = false;
-  // Files of the old Nox can stay locked a moment after he quits.
+  // Files of the old Noxo can stay locked a moment after he quits.
   for (var attempt = 1; attempt <= 20 && !copied; attempt++) {
     try {
       for (final rel in copyOrder(files)) {
@@ -268,7 +268,7 @@ Future<void> finishInstall(InstallRequest request) async {
   }
   updateLog(copied ? 'Fichiers remplacés.' : 'Échec de la copie : ancienne version conservée.');
 
-  final exe = '${request.target}${_sep}nox.exe';
+  final exe = '${request.target}${_sep}noxo.exe';
   try {
     await Process.start(exe, const [],
         workingDirectory: request.target, mode: ProcessStartMode.detached);
@@ -278,14 +278,14 @@ Future<void> finishInstall(InstallRequest request) async {
   }
 }
 
-/// Deletes what a finished update left behind (from the installed Nox).
+/// Deletes what a finished update left behind (from the installed Noxo).
 void cleanUpdate() {
   final root = Directory(_stagingRoot);
   if (!root.existsSync()) return;
   if (Platform.resolvedExecutable.startsWith(root.path)) return;
   try {
     root.deleteSync(recursive: true);
-    updateLog('Démarré en version $kNoxBuild ; copie temporaire supprimée.');
+    updateLog('Démarré en version $kNoxoBuild ; copie temporaire supprimée.');
   } catch (_) {
     // Still locked by the installer finishing: next start.
   }

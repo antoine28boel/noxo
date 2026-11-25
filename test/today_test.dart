@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/today.dart';
+import 'package:noxo/assistant/today.dart';
 
 void main() {
   group('discoverEntities', () {

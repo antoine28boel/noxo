@@ -4,7 +4,7 @@ import 'dart:ui';
 
 import 'package:ffi/ffi.dart';
 
-// Win32 bindings for Nox's pranks (desktop icons, feather window), declared
+// Win32 bindings for Noxo's pranks (desktop icons, feather window), declared
 // here so they do not depend on the exact signatures of the win32 package.
 
 final _user32 = DynamicLibrary.open('user32.dll');
@@ -209,7 +209,7 @@ List<Offset> readDesktopIcons({int max = 200}) {
   }
 }
 
-/// A tiny click-through, always-on-top window that shows the feather Nox
+/// A tiny click-through, always-on-top window that shows the feather Noxo
 /// leaves behind. It is a per-pixel-alpha layered window, so it needs no
 /// window procedure of its own.
 class FeatherWindow {

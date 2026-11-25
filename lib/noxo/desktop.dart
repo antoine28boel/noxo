@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-/// What Nox can see of the Windows desktop.
+/// What Noxo can see of the Windows desktop.
 ///
 /// All coordinates are physical screen pixels. The real implementation lives
 /// in `lib/win/win_desktop.dart`; tests use a fake.
@@ -26,8 +26,8 @@ abstract class Desktop {
   /// Visible bounds of [handle], or null if it is gone, hidden or minimized.
   Rect? windowRect(int handle);
 
-  /// Whether Nox may perch on [handle]: a normal, visible, non-maximized
-  /// application window that is not Nox itself.
+  /// Whether Noxo may perch on [handle]: a normal, visible, non-maximized
+  /// application window that is not Noxo itself.
   bool isPerchable(int handle);
 
   /// Whether [handle] is the top-most window at [point] (nothing covers it).
@@ -36,7 +36,7 @@ abstract class Desktop {
   /// Whether the foreground window covers its whole monitor (game, video…).
   bool foregroundIsFullscreen();
 
-  /// Moves [handle] horizontally by [dx] pixels (Nox pushing his perch).
+  /// Moves [handle] horizontally by [dx] pixels (Noxo pushing his perch).
   void nudgeWindow(int handle, int dx);
 
   /// Centers of the desktop icons that no window covers.
