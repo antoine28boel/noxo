@@ -107,4 +107,29 @@ void main() {
     expect(text, 'La lumière du salon est allumée.');
     expect(serviceCalls, ['/api/services/light/turn_on {"entity_id":"light.salon"}']);
   });
+
+  test('the answer arrives word by word', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    Map? sent;
+    server.listen((request) async {
+      sent = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
+      for (final part in ['Bon', 'jour', ' !']) {
+        request.response.writeln(jsonEncode({'message': {'role': 'assistant', 'content': part}, 'done': false}));
+      }
+      request.response.writeln(jsonEncode({'done': true}));
+      await request.response.close();
+    });
+    final seen = <String>[];
+    final text = await OllamaClient('http://127.0.0.1:${server.port}').chat(
+      'qwen2.5:7b',
+      ollamaMessages(const [ChatMessage(text: 'Salut', fromUser: true)], DateTime(2026)),
+      keepAlive: -1,
+      onText: seen.add,
+    );
+    await server.close(force: true);
+    expect(text, 'Bonjour !');
+    expect(seen, ['', 'Bon', 'Bonjour', 'Bonjour !']);
+    expect(sent!['keep_alive'], -1);
+    expect(sent!['stream'], isTrue);
+  });
 }

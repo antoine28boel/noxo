@@ -12,6 +12,7 @@ class ChatTab extends StatefulWidget {
     super.key,
     required this.messages,
     required this.thinking,
+    this.partial = '',
     required this.onSend,
   });
 
@@ -19,6 +20,9 @@ class ChatTab extends StatefulWidget {
 
   /// Waiting for an answer.
   final bool thinking;
+
+  /// The answer as it is being written, shown word by word.
+  final String partial;
   final void Function(String text) onSend;
 
   @override
@@ -40,7 +44,9 @@ class _ChatTabState extends State<ChatTab> {
   @override
   void didUpdateWidget(ChatTab old) {
     super.didUpdateWidget(old);
-    if (widget.messages.length != old.messages.length || widget.thinking != old.thinking) {
+    if (widget.messages.length != old.messages.length ||
+        widget.thinking != old.thinking ||
+        widget.partial.length != old.partial.length) {
       _scrollToEnd();
     }
   }
@@ -87,7 +93,13 @@ class _ChatTabState extends State<ChatTab> {
                   ),
                 ),
               for (final m in messages) _Bubble(message: m),
-              if (widget.thinking) const _Bubble(message: ChatMessage(text: '…', fromUser: false)),
+              if (widget.thinking)
+                _Bubble(
+                  message: ChatMessage(
+                    text: widget.partial.isEmpty ? '…' : widget.partial,
+                    fromUser: false,
+                  ),
+                ),
             ],
           ),
         ),

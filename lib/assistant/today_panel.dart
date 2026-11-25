@@ -63,6 +63,7 @@ class TodayPanel extends StatefulWidget {
     this.startInChat = false,
     this.messages = const [],
     this.thinking = false,
+    this.partial = '',
     this.onSend,
     this.haAgent = '',
     this.onSaveAgent,
@@ -121,6 +122,9 @@ class TodayPanel extends StatefulWidget {
 
   /// Waiting for the owl's answer.
   final bool thinking;
+
+  /// The answer as it is being written (PC AI).
+  final String partial;
   final void Function(String text)? onSend;
 
   /// Conversation agent entity, empty for Home Assistant's built-in one.
@@ -276,6 +280,7 @@ class _TodayPanelState extends State<TodayPanel> {
             : ChatTab(
                 messages: widget.messages,
                 thinking: widget.thinking,
+                partial: widget.partial,
                 onSend: widget.onSend!,
               ),
         vikunja == null ? missing('Vikunja') : keyed(TrackingTab(client: vikunja)),

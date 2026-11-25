@@ -121,6 +121,12 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   final List<ChatMessage> _chat = [];
   String? _conversationId;
   bool _thinking = false;
+
+  /// The PC AI's answer as it is being written.
+  String _partial = '';
+
+  /// The PC's model is held in memory while the island's chat is open.
+  bool _modelHeld = false;
   Timer? _outsideClick;
   TodayData? _today;
   bool _todayLoading = false;
@@ -175,6 +181,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     setState(() {
       _chat.add(message);
       _thinking = false;
+      _partial = '';
     });
   }
 
@@ -195,15 +202,46 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     try {
       if (!await _offlineAi.start()) throw const OllamaException('Ollama absent');
       final home = _haConfigured ? HaClient(_haUrl, _haToken) : null;
+      final held = _modelHeld;
       final text = await _offlineAi.client.chat(
         _offlineModel,
         ollamaMessages(_chat, DateTime.now(), home: home != null),
         home: home,
+        keepAlive: held ? -1 : null,
+        onText: (text) {
+          if (mounted) setState(() => _partial = text);
+        },
       );
+      // The island was closed meanwhile: the answer must not keep it loaded.
+      if (held && !_modelHeld) unawaited(_releaseModel(force: true));
       return ChatMessage(text: text, fromUser: false, source: 'IA du PC');
     } catch (_) {
       final why = _offlineAi.busy ? "l'IA du PC est en cours d'installation" : "l'IA du PC ne répond pas";
       return ChatMessage(text: '$haProblem et $why.', fromUser: false, error: true);
+    }
+  }
+
+  /// Island clicked: the PC's model gets loaded, so the first answer is quick.
+  Future<void> _holdModel() async {
+    _modelHeld = true;
+    try {
+      if (_offlineAi.busy || !await _offlineAi.start() || !_modelHeld) return;
+      await _offlineAi.client.load(_offlineModel);
+      // Closed while it was loading.
+      if (!_modelHeld) await _offlineAi.client.unload(_offlineModel);
+    } catch (_) {
+      // Loaded at the first question instead.
+    }
+  }
+
+  /// Island closed: the model leaves the memory.
+  Future<void> _releaseModel({bool force = false}) async {
+    if (!_modelHeld && !force) return;
+    _modelHeld = false;
+    try {
+      if (await _offlineAi.client.running()) await _offlineAi.client.unload(_offlineModel);
+    } catch (_) {
+      // Ollama frees it by itself after a few minutes.
     }
   }
 
@@ -456,6 +494,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
       _panelOpen = true;
       _panelChat = chat;
     });
+    if (chat) unawaited(_holdModel());
     _watchOutsideClick();
     unawaited(_markBriefRead());
     unawaited(_refreshToday());
@@ -481,6 +520,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     if (!_panelOpen) return;
     widget.desktop.leavePanel(kNoxoWindowSize);
     setState(() => _panelOpen = false);
+    unawaited(_releaseModel());
   }
 
   @override
@@ -756,6 +796,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 startInChat: _panelChat,
                 messages: List.unmodifiable(_chat),
                 thinking: _thinking,
+                partial: _partial,
                 onSend: _sendChat,
                 haAgent: _haAgent,
                 onSaveAgent: _saveAgent,

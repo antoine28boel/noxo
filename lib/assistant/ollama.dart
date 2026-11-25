@@ -152,34 +152,101 @@ class OllamaClient {
     }
   }
 
-  /// The model's next message (text, or tool calls when [tools] are given).
+  /// Loads [model] in memory and keeps it there until [unload].
+  Future<void> load(String model) => _json(
+    'POST',
+    '/api/generate',
+    body: {'model': model, 'keep_alive': -1},
+    timeout: const Duration(minutes: 3),
+  );
+
+  /// Frees the memory taken by [model].
+  Future<void> unload(String model) => _json(
+    'POST',
+    '/api/generate',
+    body: {'model': model, 'keep_alive': 0},
+    timeout: const Duration(seconds: 20),
+  );
+
+  /// The model's next message (text, or tool calls when [tools] are given),
+  /// streamed: [onText] gets the text written so far. [keepAlive] -1 keeps
+  /// the model loaded afterwards.
   Future<Map<String, Object?>> next(
     String model,
     List<Map<String, Object?>> messages, {
     List<Object>? tools,
+    int? keepAlive,
+    void Function(String text)? onText,
   }) async {
-    final json = await _json(
-      'POST',
-      '/api/chat',
-      body: {'model': model, 'messages': messages, 'stream': false, 'tools': ?tools},
-      // A first answer on a laptop without GPU loads the model: slow.
-      timeout: const Duration(minutes: 3),
-    );
-    final message = json is Map ? json['message'] : null;
-    if (message is! Map) throw const OllamaException("Réponse vide de l'IA du PC.");
-    return message.cast<String, Object?>();
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+    final text = StringBuffer();
+    final calls = <Object?>[];
+    try {
+      final response = await _send(
+        client,
+        'POST',
+        '/api/chat',
+        body: {
+          'model': model,
+          'messages': messages,
+          'stream': true,
+          'tools': ?tools,
+          'keep_alive': ?keepAlive,
+        },
+        // A first answer on a laptop without GPU loads the model: slow.
+      ).timeout(const Duration(minutes: 3));
+      final lines = response
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .timeout(const Duration(minutes: 3));
+      await for (final line in lines) {
+        if (line.trim().isEmpty) continue;
+        final json = jsonDecode(line);
+        if (json is! Map) continue;
+        if (json['error'] is String) throw OllamaException(json['error'] as String);
+        final message = json['message'];
+        if (message is Map) {
+          final part = message['content'];
+          if (part is String && part.isNotEmpty) {
+            text.write(part);
+            if (calls.isEmpty) onText?.call(text.toString());
+          }
+          final toolCalls = message['tool_calls'];
+          if (toolCalls is List) calls.addAll(toolCalls);
+        }
+        if (json['done'] == true) break;
+      }
+    } on TimeoutException {
+      throw const OllamaException("L'IA du PC ne répond pas.");
+    } finally {
+      client.close(force: true);
+    }
+    return {
+      'role': 'assistant',
+      'content': text.toString(),
+      if (calls.isNotEmpty) 'tool_calls': calls,
+    };
   }
 
   /// Noxo's answer to the conversation so far. With [home], the model can
   /// search, read and command the house through Home Assistant.
-  Future<String> chat(String model, List<Map<String, Object?>> messages, {HaClient? home}) async {
+  Future<String> chat(
+    String model,
+    List<Map<String, Object?>> messages, {
+    HaClient? home,
+    int? keepAlive,
+    void Function(String text)? onText,
+  }) async {
     final conversation = [...messages];
     // A few rounds of tools at most, then an answer is due.
     for (var round = 0; round < 6; round++) {
+      onText?.call('');
       final message = await next(
         model,
         conversation,
         tools: home == null || round == 5 ? null : homeToolDefinitions,
+        keepAlive: keepAlive,
+        onText: onText,
       );
       final calls = message['tool_calls'];
       if (home == null || calls is! List || calls.isEmpty) {
