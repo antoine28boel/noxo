@@ -228,7 +228,7 @@ class _OfflineAiFormState extends State<OfflineAiForm> {
                 activeThumbColor: panelAccent,
                 title: const Text("Toujours utiliser l'IA du PC"),
                 subtitle: const Text(
-                  'Même quand Home Assistant est joignable (elle ne commande pas la maison). '
+                  'Même quand Home Assistant est joignable ; elle commande la maison à travers lui. '
                   'Home Assistant répond si elle échoue.',
                   style: TextStyle(color: panelMuted, fontSize: 12),
                 ),

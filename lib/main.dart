@@ -194,11 +194,13 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   Future<ChatMessage> _askOfflineAi(String haProblem) async {
     try {
       if (!await _offlineAi.start()) throw const OllamaException('Ollama absent');
+      final home = _haConfigured ? HaClient(_haUrl, _haToken) : null;
       final text = await _offlineAi.client.chat(
         _offlineModel,
-        ollamaMessages(_chat, DateTime.now()),
+        ollamaMessages(_chat, DateTime.now(), home: home != null),
+        home: home,
       );
-      return ChatMessage(text: text, fromUser: false, source: 'IA du PC (hors ligne)');
+      return ChatMessage(text: text, fromUser: false, source: 'IA du PC');
     } catch (_) {
       final why = _offlineAi.busy ? "l'IA du PC est en cours d'installation" : "l'IA du PC ne répond pas";
       return ChatMessage(text: '$haProblem et $why.', fromUser: false, error: true);

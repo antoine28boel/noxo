@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'chat.dart';
+import 'ha_client.dart';
+import 'home_tools.dart';
 
 /// Model Noxo installs for the offline AI, unless another one is chosen.
 const kDefaultOllamaModel = 'qwen2.5:7b';
@@ -12,21 +14,28 @@ const kDefaultOllamaModel = 'qwen2.5:7b';
 const _installerUrl = 'https://ollama.com/download/OllamaSetup.exe';
 
 /// What Noxo tells the offline AI about himself.
-String ollamaSystemPrompt(DateTime now) {
+String ollamaSystemPrompt(DateTime now, {bool home = false}) {
   const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
   final hh = now.hour.toString().padLeft(2, '0');
   final mm = now.minute.toString().padLeft(2, '0');
   final date = '${days[now.weekday - 1]} ${now.day}/${now.month}/${now.year}';
   return 'Tu es Noxo, un petit hibou qui vit sur le bureau de ton humain et '
       "l'aide au quotidien. Réponds en français, en tutoyant, brièvement et "
-      'simplement. Nous sommes le $date, il est $hh:$mm. Tu ne peux pas '
-      'commander la maison ; si on te le demande, dis-le sans inventer.';
+      'simplement. Nous sommes le $date, il est $hh:$mm. '
+      '${home ? "Pour la maison, utilise les outils : cherche l'appareil, puis "
+          "commande-le ou lis son état ; ne dis jamais qu'une action est faite "
+          "sans l'avoir faite avec un outil." : "Tu ne peux pas commander la maison "
+          "(Home Assistant n'est pas relié) ; si on te le demande, dis-le sans inventer."}';
 }
 
 /// The conversation as Ollama expects it: the system prompt, then the
 /// exchanged lines (Noxo's error notes left out).
-List<Map<String, String>> ollamaMessages(List<ChatMessage> history, DateTime now) => [
-  {'role': 'system', 'content': ollamaSystemPrompt(now)},
+List<Map<String, Object?>> ollamaMessages(
+  List<ChatMessage> history,
+  DateTime now, {
+  bool home = false,
+}) => [
+  {'role': 'system', 'content': ollamaSystemPrompt(now, home: home)},
   for (final m in history)
     if (!m.error) {'role': m.fromUser ? 'user' : 'assistant', 'content': m.text},
 ];
@@ -143,18 +152,60 @@ class OllamaClient {
     }
   }
 
-  /// Noxo's answer to the conversation so far.
-  Future<String> chat(String model, List<Map<String, String>> messages) async {
+  /// The model's next message (text, or tool calls when [tools] are given).
+  Future<Map<String, Object?>> next(
+    String model,
+    List<Map<String, Object?>> messages, {
+    List<Object>? tools,
+  }) async {
     final json = await _json(
       'POST',
       '/api/chat',
-      body: {'model': model, 'messages': messages, 'stream': false},
+      body: {'model': model, 'messages': messages, 'stream': false, 'tools': ?tools},
       // A first answer on a laptop without GPU loads the model: slow.
       timeout: const Duration(minutes: 3),
     );
-    final text = parseOllamaChat(json);
-    if (text == null) throw const OllamaException("Réponse vide de l'IA du PC.");
-    return text;
+    final message = json is Map ? json['message'] : null;
+    if (message is! Map) throw const OllamaException("Réponse vide de l'IA du PC.");
+    return message.cast<String, Object?>();
+  }
+
+  /// Noxo's answer to the conversation so far. With [home], the model can
+  /// search, read and command the house through Home Assistant.
+  Future<String> chat(String model, List<Map<String, Object?>> messages, {HaClient? home}) async {
+    final conversation = [...messages];
+    // A few rounds of tools at most, then an answer is due.
+    for (var round = 0; round < 6; round++) {
+      final message = await next(
+        model,
+        conversation,
+        tools: home == null || round == 5 ? null : homeToolDefinitions,
+      );
+      final calls = message['tool_calls'];
+      if (home == null || calls is! List || calls.isEmpty) {
+        final text = parseOllamaChat({'message': message});
+        if (text == null) throw const OllamaException("Réponse vide de l'IA du PC.");
+        return text;
+      }
+      conversation.add(message);
+      Object? states;
+      for (final raw in calls) {
+        final call = parseToolCall(raw);
+        if (call == null) continue;
+        String result;
+        try {
+          states ??= await home.states();
+          result = await runHomeTool(home, states, call.name, call.arguments);
+          if (call.name == 'commander_appareil') states = null;
+        } on HaException catch (e) {
+          result = e.message;
+        } catch (_) {
+          result = 'Home Assistant injoignable.';
+        }
+        conversation.add({'role': 'tool', 'tool_name': call.name, 'content': result});
+      }
+    }
+    throw const OllamaException("L'IA du PC tourne en rond.");
   }
 }
 
@@ -293,4 +344,32 @@ class OllamaSetup extends ChangeNotifier {
       throw OllamaException("l'installateur d'Ollama a échoué (${result.exitCode})");
     }
   }
+}
+
+/// Runs one house tool asked by the model; the text goes back to it.
+Future<String> runHomeTool(
+  HaClient home,
+  Object? states,
+  String name,
+  Map<String, Object?> arguments,
+) async {
+  String text(String key) => arguments[key] is String ? arguments[key] as String : '';
+  switch (name) {
+    case 'chercher_appareils':
+      return searchEntities(states, text('texte'));
+    case 'etat_appareil':
+      return entityDetails(states, text('identifiant'));
+    case 'commander_appareil':
+      final id = text('identifiant');
+      final raw = arguments['valeur'];
+      final value = raw is num ? raw : num.tryParse('$raw');
+      final command = commandFor(id, text('action'), value);
+      if (command is! ServiceCall) return command as String;
+      if (entityDetails(states, id).startsWith('Appareil')) {
+        return "Appareil $id introuvable : utilise chercher_appareils d'abord.";
+      }
+      await home.callService(command.domain, command.service, command.data);
+      return 'Fait : ${command.domain}.${command.service} sur $id.';
+  }
+  return 'Outil inconnu : $name.';
 }
