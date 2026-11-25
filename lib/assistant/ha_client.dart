@@ -131,6 +131,15 @@ class HaClient {
     return results;
   }
 
+  /// The conversation agent of the preferred voice assistant, or null for
+  /// the built-in Assist.
+  Future<String?> defaultAgent() async {
+    final results = await _socket([
+      {'type': 'assist_pipeline/pipeline/list'},
+    ]);
+    return preferredPipelineAgent(results.first);
+  }
+
   /// The dashboards of Home Assistant, the default one first.
   Future<List<HaDashboardInfo>> fetchDashboards() async {
     final results = await _socket([

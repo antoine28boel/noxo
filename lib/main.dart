@@ -150,7 +150,7 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
         final reply = await HaClient(
           _haUrl,
           _haToken,
-        ).converse(text, conversationId: _conversationId, agentId: _haAgent);
+        ).converse(text, conversationId: _conversationId, agentId: await _chatAgent());
         _conversationId = reply.conversationId ?? _conversationId;
         answer = ChatMessage(text: reply.text, fromUser: false);
       } on HaException catch (e) {
@@ -198,6 +198,29 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   /// At startup, then every hour until it is done.
   void _installOfflineAi() {
     if (!_offlineAi.ready) unawaited(_offlineAi.ensure(_offlineModel));
+  }
+
+  /// Agent of Home Assistant's preferred voice assistant, looked up again
+  /// every 10 minutes ('' for the built-in Assist).
+  String? _pipelineAgent;
+  DateTime? _pipelineAgentAt;
+
+  /// The agent chosen in the settings, else Home Assistant's default one.
+  Future<String> _chatAgent() async {
+    if (_haAgent.isNotEmpty) return _haAgent;
+    final at = _pipelineAgentAt;
+    final cached = _pipelineAgent;
+    final fresh = at != null && DateTime.now().difference(at) < const Duration(minutes: 10);
+    if (cached != null && fresh) return cached;
+    try {
+      _pipelineAgent = await HaClient(_haUrl, _haToken).defaultAgent() ?? '';
+      _pipelineAgentAt = DateTime.now();
+    } catch (_) {
+      // Unknown: Home Assistant picks.
+    }
+    final agent = _pipelineAgent ?? '';
+    if (agent != cached) _conversationId = null;
+    return agent;
   }
 
   Future<void> _saveAgent(String agent) async {

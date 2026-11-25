@@ -55,4 +55,18 @@ void main() {
     expect(agents.first.name, 'Claude');
     expect(parseConversationAgents({'oops': 1}), isEmpty);
   });
+
+  test('preferredPipelineAgent gives the voice assistant\'s AI', () {
+    Map<String, Object?> list(String engine) => {
+      'preferred_pipeline': 'b',
+      'pipelines': [
+        {'id': 'a', 'conversation_engine': 'conversation.other'},
+        {'id': 'b', 'conversation_engine': engine},
+      ],
+    };
+    expect(preferredPipelineAgent(list('conversation.google_ai')), 'conversation.google_ai');
+    expect(preferredPipelineAgent(list('conversation.home_assistant')), isNull);
+    expect(preferredPipelineAgent(list('homeassistant')), isNull);
+    expect(preferredPipelineAgent(null), isNull);
+  });
 }

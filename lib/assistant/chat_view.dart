@@ -251,6 +251,9 @@ class AgentForm extends StatefulWidget {
 class _AgentFormState extends State<AgentForm> {
   late String _agent = widget.agent;
   List<ConversationAgent>? _agents;
+
+  /// Agent of Home Assistant's preferred voice assistant, null for Assist.
+  String? _defaultAgent;
   String? _error;
 
   @override
@@ -262,10 +265,29 @@ class _AgentFormState extends State<AgentForm> {
   Future<void> _load() async {
     try {
       final agents = parseConversationAgents(await widget.client.states());
-      if (mounted) setState(() => _agents = agents);
+      String? fallback;
+      try {
+        fallback = await widget.client.defaultAgent();
+      } catch (_) {
+        // Shown as plain "par défaut".
+      }
+      if (mounted) {
+        setState(() {
+          _agents = agents;
+          _defaultAgent = fallback;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Liste des agents indisponible (Home Assistant injoignable).');
     }
+  }
+
+  /// The "default" entry names the agent it stands for.
+  String _defaultLabel(List<ConversationAgent> agents) {
+    final id = _defaultAgent;
+    if (id == null) return 'Par défaut de Home Assistant : Assist (sans IA)';
+    final name = agents.where((a) => a.id == id).map((a) => a.name).firstOrNull ?? id;
+    return 'Par défaut de Home Assistant : $name';
   }
 
   @override
@@ -291,7 +313,7 @@ class _AgentFormState extends State<AgentForm> {
             isExpanded: true,
             dropdownColor: panelCard,
             items: [
-              const DropdownMenuItem(value: '', child: Text('Assist (intégré, sans IA)')),
+              DropdownMenuItem(value: '', child: Text(_defaultLabel(agents))),
               for (final a in agents) DropdownMenuItem(value: a.id, child: Text(a.name)),
               if (_agent.isNotEmpty && !ids.contains(_agent))
                 DropdownMenuItem(value: _agent, child: Text('$_agent (introuvable)')),
