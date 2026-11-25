@@ -6,6 +6,7 @@ import 'brief.dart';
 import 'chat.dart';
 import 'ha_dashboard.dart';
 import 'home.dart';
+import 'reminders.dart';
 import 'today.dart';
 
 /// A problem Noxo can explain to the user (wrong token, unexpected answer…).
@@ -180,6 +181,44 @@ class HaClient {
     }
     sortEvents(events);
     return events;
+  }
+
+  /// The reminders still to ring in the to-do list [list].
+  Future<List<Reminder>> fetchReminders(String list) async {
+    final json = await _request(
+      'POST',
+      _uri('/api/services/todo/get_items', const {'return_response': ''}),
+      body: {'entity_id': list, 'status': 'needs_action'},
+    );
+    return parseReminders(json, list);
+  }
+
+  Future<void> addReminder(String list, String summary, DateTime due, Repeat? repeat) =>
+      callService('todo', 'add_item', {
+        'entity_id': list,
+        'item': summary,
+        'due_datetime': haDateTime(due),
+        if (repeat != null) 'description': repeatDescription(repeat),
+      });
+
+  Future<void> completeReminder(String list, String uid) =>
+      callService('todo', 'update_item', {'entity_id': list, 'item': uid, 'status': 'completed'});
+
+  Future<void> moveReminder(String list, String uid, DateTime due) =>
+      callService('todo', 'update_item', {
+        'entity_id': list,
+        'item': uid,
+        'due_datetime': haDateTime(due),
+      });
+
+  /// The notification services (phones first).
+  Future<List<String>> notifyServices() async =>
+      parseNotifyServices(await _request('GET', _uri('/api/services')));
+
+  /// Sends a notification through [service] ("notify.mobile_app_…").
+  Future<void> notify(String service, String title, String message) {
+    final name = service.startsWith('notify.') ? service.substring(7) : service;
+    return callService('notify', name, {'title': title, 'message': message});
   }
 
   /// Every to-do list with all its items (done ones included).

@@ -713,10 +713,13 @@ class _AgendaTabState extends State<AgendaTab> with _LiveTab<AgendaTab, List<Age
 // ---------------------------------------------------------------- Tâches
 
 class TasksTab extends StatefulWidget {
-  const TasksTab({super.key, required this.client, required this.memory});
+  const TasksTab({super.key, required this.client, required this.memory, this.header});
 
   final HaClient client;
   final PanelMemory memory;
+
+  /// Shown above the lists (the reminders).
+  final Widget? header;
 
   @override
   State<TasksTab> createState() => _TasksTabState();
@@ -759,6 +762,7 @@ class _TasksTabState extends State<TasksTab> with _LiveTab<TasksTab, List<TodoLi
   Widget build(BuildContext context) {
     return frame(
       (lists) => [
+        ?widget.header,
         if (lists.isEmpty) const PanelNote('Aucune liste de tâches dans Home Assistant.'),
         if (lists.isNotEmpty)
           Align(

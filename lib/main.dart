@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart' as acrylic;
 import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -17,6 +18,8 @@ import 'assistant/actual_client.dart';
 import 'assistant/spotify_client.dart';
 import 'assistant/chat.dart';
 import 'assistant/ollama.dart';
+import 'assistant/reminder_service.dart';
+import 'assistant/reminders.dart';
 import 'assistant/today_panel.dart';
 import 'assistant/vikunja_client.dart';
 import 'noxo/brain.dart';
@@ -60,6 +63,13 @@ Future<void> main(List<String> args) async {
   });
 
   _keepNoxSettings();
+  if (Platform.isWindows) {
+    try {
+      await localNotifier.setup(appName: 'Noxo');
+    } catch (_) {
+      // Reminders still come in the owl's beak.
+    }
+  }
   final prefs = await SharedPreferences.getInstance();
   final mode = prefs.getString('mode') == 'espiegle' ? NoxoMode.espiegle : NoxoMode.sage;
 
@@ -208,6 +218,8 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
         ollamaMessages(_chat, DateTime.now(), home: home != null),
         home: home,
         keepAlive: held ? -1 : null,
+        extraTools: _reminderList.isEmpty ? const [] : const [reminderToolDefinition],
+        runExtra: _reminderTool,
         onText: (text) {
           if (mounted) setState(() => _partial = text);
         },
@@ -219,6 +231,72 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
       final why = _offlineAi.busy ? "l'IA du PC est en cours d'installation" : "l'IA du PC ne répond pas";
       return ChatMessage(text: '$haProblem et $why.', fromUser: false, error: true);
     }
+  }
+
+  // Reminders.
+  String get _reminderList => widget.prefs.getString('reminder_list') ?? '';
+  String get _notifyService => widget.prefs.getString('notify_service') ?? '';
+
+  late final _reminders = ReminderService(
+    read: widget.prefs.getString,
+    write: (key, value) => widget.prefs.setString(key, value),
+    backend: () => _haConfigured && _reminderList.isNotEmpty
+        ? HaReminderBackend(HaClient(_haUrl, _haToken), _reminderList)
+        : null,
+    onRing: _ring,
+  );
+  Timer? _reminderTick;
+  Timer? _reminderRefresh;
+
+  /// A reminder is due: Windows shows it, the owl brings it, the phone too.
+  void _ring(Reminder r) {
+    _updateCarrying();
+    if (!widget.brain.workMode && !widget.brain.hidden) {
+      widget.brain.recall(widget.desktop, widget.desktop.cursor());
+    }
+    if (Platform.isWindows) {
+      final toast = LocalNotification(
+        title: 'Noxo',
+        body: r.summary,
+        actions: [
+          LocalNotificationAction(text: 'Fait'),
+          LocalNotificationAction(text: 'Dans 10 min'),
+        ],
+      )
+        ..onClick = _openPanel
+        ..onClickAction = (index) {
+          index == 0 ? _reminders.done(r) : _reminders.snooze(r, const Duration(minutes: 10));
+        };
+      unawaited(localNotifier.notify(toast).catchError((_) {}));
+    }
+    final phone = _notifyService;
+    if (_haConfigured && phone.isNotEmpty) {
+      unawaited(
+        HaClient(_haUrl, _haToken).notify(phone, 'Rappel de Noxo', r.summary).catchError((_) {}),
+      );
+    }
+  }
+
+  Future<void> _saveReminders(String list, String service) async {
+    final changed = list != _reminderList;
+    await widget.prefs.setString('reminder_list', list);
+    await widget.prefs.setString('notify_service', service);
+    if (mounted) setState(() {});
+    if (changed) unawaited(_reminders.refresh());
+  }
+
+  /// The AI's "creer_rappel" tool.
+  Future<String> _reminderTool(String name, Map<String, Object?> arguments) async {
+    final what = arguments['texte'];
+    final when = parseWhen('${arguments['quand']}') ??
+        parseFrenchWhen('${arguments['quand']}', DateTime.now());
+    if (what is! String || what.trim().isEmpty || when == null) {
+      return 'Il faut le texte et la date au format AAAA-MM-JJ HH:MM.';
+    }
+    final repeat = repeatFromWord(arguments['repetition'] as String?);
+    _reminders.add(what.trim(), when, repeat);
+    final again = repeat == null ? '' : ', ${repeatDescription(repeat).toLowerCase()}';
+    return 'Rappel créé pour le ${haDateTime(when).substring(0, 16)}$again.';
   }
 
   /// Island clicked: the PC's model gets loaded, so the first answer is quick.
@@ -330,7 +408,8 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   /// Noxo holds an envelope while he has news: an update or an unread brief.
   void _updateCarrying() {
     final brief = _todayBrief;
-    widget.brain.carrying = _update != null || (brief != null && !brief.read);
+    widget.brain.carrying =
+        _update != null || (brief != null && !brief.read) || _reminders.ringing.isNotEmpty;
   }
 
   /// At the first sign of life of the day, Noxo fetches the day and brings
@@ -540,6 +619,13 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
     _cleanUpdate = Timer(const Duration(seconds: 30), cleanUpdate);
     _briefTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkBrief());
     _firstOfflineAi = Timer(const Duration(seconds: 15), _installOfflineAi);
+    _reminders.addListener(_updateCarrying);
+    _reminderTick = Timer.periodic(const Duration(seconds: 30), (_) => _reminders.tick());
+    _reminderRefresh = Timer.periodic(const Duration(minutes: 5), (_) => _reminders.refresh());
+    Timer(const Duration(seconds: 8), () {
+      _reminders.tick();
+      unawaited(_reminders.refresh());
+    });
     _offlineAiTimer = Timer.periodic(const Duration(hours: 1), (_) => _installOfflineAi());
   }
 
@@ -743,6 +829,9 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
   @override
   void dispose() {
     _firstOfflineAi?.cancel();
+    _reminderTick?.cancel();
+    _reminderRefresh?.cancel();
+    _reminders.dispose();
     _offlineAiTimer?.cancel();
     _offlineAi.dispose();
     _firstCheck?.cancel();
@@ -804,6 +893,10 @@ class _NoxoAppState extends State<NoxoApp> with TrayListener {
                 offlineModel: _offlineModel,
                 onSaveOfflineModel: _saveOfflineModel,
                 offlineFirst: _offlineFirst,
+                reminders: _reminders,
+                reminderList: _reminderList,
+                notifyService: _notifyService,
+                onSaveReminders: _saveReminders,
                 onOfflineFirst: _saveOfflineFirst,
               )
             : NoxoView(

@@ -236,20 +236,26 @@ class OllamaClient {
     HaClient? home,
     int? keepAlive,
     void Function(String text)? onText,
+    List<Object> extraTools = const [],
+    Future<String> Function(String name, Map<String, Object?> arguments)? runExtra,
   }) async {
     final conversation = [...messages];
+    final tools = [if (home != null) ...homeToolDefinitions, ...extraTools];
+    final extraNames = {
+      for (final t in extraTools) ((t as Map)['function'] as Map)['name'] as String,
+    };
     // A few rounds of tools at most, then an answer is due.
     for (var round = 0; round < 6; round++) {
       onText?.call('');
       final message = await next(
         model,
         conversation,
-        tools: home == null || round == 5 ? null : homeToolDefinitions,
+        tools: tools.isEmpty || round == 5 ? null : tools,
         keepAlive: keepAlive,
         onText: onText,
       );
       final calls = message['tool_calls'];
-      if (home == null || calls is! List || calls.isEmpty) {
+      if (tools.isEmpty || calls is! List || calls.isEmpty) {
         final text = parseOllamaChat({'message': message});
         if (text == null) throw const OllamaException("Réponse vide de l'IA du PC.");
         return text;
@@ -261,6 +267,16 @@ class OllamaClient {
         if (call == null) continue;
         String result;
         try {
+          if (extraNames.contains(call.name) && runExtra != null) {
+            result = await runExtra(call.name, call.arguments);
+            conversation.add({'role': 'tool', 'tool_name': call.name, 'content': result});
+            continue;
+          }
+          if (home == null) {
+            result = 'Home Assistant n\'est pas relié.';
+            conversation.add({'role': 'tool', 'tool_name': call.name, 'content': result});
+            continue;
+          }
           states ??= await home.states();
           result = await runHomeTool(home, states, call.name, call.arguments);
           if (call.name == 'commander_appareil') states = null;

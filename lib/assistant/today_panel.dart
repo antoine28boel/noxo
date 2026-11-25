@@ -4,7 +4,10 @@ import 'actual_client.dart';
 import 'brief.dart';
 import 'chat.dart';
 import 'chat_view.dart';
+import 'home.dart';
 import 'ollama.dart';
+import 'reminder_service.dart';
+import 'reminders_view.dart';
 import 'ha_client.dart';
 import 'panel_style.dart';
 import 'panel_tabs.dart';
@@ -71,6 +74,10 @@ class TodayPanel extends StatefulWidget {
     this.offlineModel = kDefaultOllamaModel,
     this.onSaveOfflineModel,
     this.offlineFirst = false,
+    this.reminders,
+    this.reminderList = '',
+    this.notifyService = '',
+    this.onSaveReminders,
     this.onOfflineFirst,
     this.memory,
   });
@@ -136,6 +143,12 @@ class TodayPanel extends StatefulWidget {
   final String offlineModel;
   final void Function(String model)? onSaveOfflineModel;
 
+  /// Reminders: ringing ones on top, coming ones in the "Tâches" tab.
+  final ReminderService? reminders;
+  final String reminderList;
+  final String notifyService;
+  final void Function(String list, String service)? onSaveReminders;
+
   /// The PC's AI answers first, even when Home Assistant is reachable.
   final bool offlineFirst;
   final void Function(bool value)? onOfflineFirst;
@@ -175,6 +188,7 @@ class _TodayPanelState extends State<TodayPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _header(),
+                if (widget.reminders case final r?) RingingBanner(service: r),
                 if (!_settings) _tabBar(),
                 Expanded(child: _settings ? _settingsForms() : _tabs()),
               ],
@@ -289,7 +303,18 @@ class _TodayPanelState extends State<TodayPanel> {
             : keyed(MusicTab(client: client, spotify: widget.spotify)),
         live((c) => HomeTab(client: c, memory: _memory)),
         live((c) => AgendaTab(client: c, memory: _memory, now: widget.now, brief: widget.brief)),
-        live((c) => TasksTab(client: c, memory: _memory)),
+        live(
+          (c) => TasksTab(
+            client: c,
+            memory: _memory,
+            header: widget.reminders == null
+                ? null
+                : RemindersSection(
+                    service: widget.reminders!,
+                    configured: widget.reminderList.isNotEmpty,
+                  ),
+          ),
+        ),
         widget.actual == null
             ? missing('Actual Budget')
             : keyed(BudgetTab(client: widget.actual!, memory: _memory, now: widget.now)),
@@ -314,6 +339,14 @@ class _TodayPanelState extends State<TodayPanel> {
         ),
         if ((widget.client, widget.onSaveAgent) case (final client?, final onSave?))
           AgentForm(client: client, agent: widget.haAgent, onSave: onSave),
+        if ((widget.client, widget.onSaveReminders) case (final client?, final onSave?))
+          RemindersForm(
+            loadLists: () async => parseTodoLists(await client.states()),
+            loadServices: client.notifyServices,
+            list: widget.reminderList,
+            service: widget.notifyService,
+            onSave: onSave,
+          ),
         if ((widget.offlineAi, widget.onSaveOfflineModel) case (final ai?, final onSave?))
           OfflineAiForm(
             setup: ai,
