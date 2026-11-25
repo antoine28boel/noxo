@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'brief.dart';
+import 'chat.dart';
 import 'ha_dashboard.dart';
 import 'home.dart';
 import 'today.dart';
@@ -229,6 +230,30 @@ class HaClient {
     }
 
     return TodayData(fetchedAt: now, weather: found.weather, events: events, tasks: tasks);
+  }
+
+  /// Sends a sentence to Home Assistant's conversation agent: [agentId]
+  /// (e.g. `conversation.ollama`), or the built-in Assist agent when empty,
+  /// which understands home commands without any AI.
+  Future<ConversationReply> converse(
+    String text, {
+    String? conversationId,
+    String agentId = '',
+  }) async {
+    final json = await _request(
+      'POST',
+      _uri('/api/conversation/process'),
+      body: {
+        'text': text,
+        'language': 'fr',
+        'conversation_id': ?conversationId,
+        if (agentId.isNotEmpty) 'agent_id': agentId,
+      },
+      timeout: const Duration(seconds: 60),
+    );
+    final reply = parseConversationReply(json);
+    if (reply == null) throw const HaException('Réponse inattendue de Home Assistant.');
+    return reply;
   }
 
   /// Asks Home Assistant's AI (its default "AI task" entity) to write the

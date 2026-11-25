@@ -15,6 +15,7 @@ import 'assistant/panel_style.dart';
 import 'assistant/today.dart';
 import 'assistant/actual_client.dart';
 import 'assistant/spotify_client.dart';
+import 'assistant/chat.dart';
 import 'assistant/today_panel.dart';
 import 'assistant/vikunja_client.dart';
 import 'nox/brain.dart';
@@ -110,6 +111,12 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
 
   // "Aujourd'hui" panel.
   bool _panelOpen = false;
+
+  // Chat (kept until the owl quits).
+  bool _panelChat = false;
+  final List<ChatMessage> _chat = [];
+  String? _conversationId;
+  bool _thinking = false;
   Timer? _outsideClick;
   TodayData? _today;
   bool _todayLoading = false;
@@ -123,7 +130,44 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
 
   String get _haUrl => widget.prefs.getString('ha_url') ?? '';
   String get _haToken => widget.prefs.getString('ha_token') ?? '';
+  String get _haAgent => widget.prefs.getString('ha_agent') ?? '';
   bool get _haConfigured => _haUrl.isNotEmpty && _haToken.isNotEmpty;
+
+  Future<void> _sendChat(String text) async {
+    if (_thinking) return;
+    setState(() {
+      _chat.add(ChatMessage(text: text, fromUser: true));
+      _thinking = true;
+    });
+    ChatMessage answer;
+    try {
+      final reply = await HaClient(
+        _haUrl,
+        _haToken,
+      ).converse(text, conversationId: _conversationId, agentId: _haAgent);
+      _conversationId = reply.conversationId ?? _conversationId;
+      answer = ChatMessage(text: reply.text, fromUser: false);
+    } on HaException catch (e) {
+      answer = ChatMessage(text: e.message, fromUser: false, error: true);
+    } catch (_) {
+      answer = const ChatMessage(
+        text: 'Home Assistant est injoignable, je ne peux pas répondre.',
+        fromUser: false,
+        error: true,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _chat.add(answer);
+      _thinking = false;
+    });
+  }
+
+  Future<void> _saveAgent(String agent) async {
+    if (agent == _haAgent) return;
+    await widget.prefs.setString('ha_agent', agent);
+    _conversationId = null;
+  }
 
   void _loadCachedToday() {
     final cached = widget.prefs.getString('today_cache');
@@ -325,10 +369,14 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     if (mounted) setState(() => _spotify = null);
   }
 
-  void _openPanel() {
+  /// [chat]: the owl was called from his island, the panel opens on the chat.
+  void _openPanel({bool chat = false}) {
     if (_panelOpen) return;
     widget.desktop.enterPanel(widget.brain.pos, kPanelSize);
-    setState(() => _panelOpen = true);
+    setState(() {
+      _panelOpen = true;
+      _panelChat = chat;
+    });
     _watchOutsideClick();
     unawaited(_markBriefRead());
     unawaited(_refreshToday());
@@ -619,12 +667,19 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
                 onClose: _closePanel,
                 onSaveSettings: _saveHaSettings,
                 memory: _panelMemory,
+                startInChat: _panelChat,
+                messages: List.unmodifiable(_chat),
+                thinking: _thinking,
+                onSend: _sendChat,
+                haAgent: _haAgent,
+                onSaveAgent: _saveAgent,
               )
             : NoxView(
                 brain: widget.brain,
                 desktop: widget.desktop,
                 onMouseOver: (over) => widget.desktop.setClickThrough(!over),
                 onDoubleClick: _openPanel,
+                onCall: () => _openPanel(chat: true),
                 onToggleNest: _toggleNest,
                 onNestMoved: () {
                   widget.prefs.setDouble('nest_x', widget.brain.nestX);

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'actual_client.dart';
 import 'brief.dart';
+import 'chat.dart';
+import 'chat_view.dart';
 import 'ha_client.dart';
 import 'panel_style.dart';
 import 'panel_tabs.dart';
@@ -57,6 +59,12 @@ class TodayPanel extends StatefulWidget {
     required this.onClose,
     required this.onSaveSettings,
     required this.onSaveVikunja,
+    this.startInChat = false,
+    this.messages = const [],
+    this.thinking = false,
+    this.onSend,
+    this.haAgent = '',
+    this.onSaveAgent,
     this.memory,
   });
 
@@ -100,6 +108,19 @@ class TodayPanel extends StatefulWidget {
   final SaveServer onSaveSettings;
   final SaveServer onSaveVikunja;
 
+  /// Opens on the chat (the owl called from his island).
+  final bool startInChat;
+
+  final List<ChatMessage> messages;
+
+  /// Waiting for the owl's answer.
+  final bool thinking;
+  final void Function(String text)? onSend;
+
+  /// Conversation agent entity, empty for Home Assistant's built-in one.
+  final String haAgent;
+  final void Function(String agent)? onSaveAgent;
+
   /// Folded sections and chosen dashboard; kept in memory only when null.
   final PanelMemory? memory;
 
@@ -129,7 +150,8 @@ class _TodayPanelState extends State<TodayPanel> {
         child: DefaultTextStyle(
           style: const TextStyle(color: _text, fontSize: 14),
           child: DefaultTabController(
-            length: 6,
+            length: 7,
+            initialIndex: widget.startInChat ? 0 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -195,7 +217,7 @@ class _TodayPanelState extends State<TodayPanel> {
       height: 50,
       iconMargin: const EdgeInsets.only(bottom: 2),
       icon: Icon(icon, size: 20),
-      // Six tabs share 420 px: a label never wraps onto a second line.
+      // Seven tabs share 420 px: a label never wraps onto a second line.
       child: Text(
         label,
         maxLines: 1,
@@ -211,6 +233,7 @@ class _TodayPanelState extends State<TodayPanel> {
       dividerColor: Colors.transparent,
       labelPadding: EdgeInsets.zero,
       tabs: [
+        tab(Icons.chat_bubble_outline_rounded, 'Discuter'),
         tab(Icons.track_changes_rounded, 'Suivi'),
         tab(Icons.music_note_rounded, 'Musique'),
         tab(Icons.home_outlined, 'Maison'),
@@ -233,6 +256,13 @@ class _TodayPanelState extends State<TodayPanel> {
     final vikunja = widget.vikunja;
     return TabBarView(
       children: [
+        client == null || widget.onSend == null
+            ? missing('Home Assistant')
+            : ChatTab(
+                messages: widget.messages,
+                thinking: widget.thinking,
+                onSend: widget.onSend!,
+              ),
         vikunja == null ? missing('Vikunja') : keyed(TrackingTab(client: vikunja)),
         client == null && widget.spotify == null
             ? missing('Home Assistant ni à Spotify')
@@ -262,6 +292,8 @@ class _TodayPanelState extends State<TodayPanel> {
           configured: widget.configured,
           onSave: widget.onSaveSettings,
         ),
+        if (widget.onSaveAgent case final onSave?)
+          AgentForm(agent: widget.haAgent, onSave: onSave),
         _ServerForm(
           title: 'Vikunja',
           intro:

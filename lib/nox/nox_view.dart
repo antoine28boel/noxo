@@ -21,6 +21,7 @@ class NoxView extends StatefulWidget {
     required this.desktop,
     required this.onMouseOver,
     required this.onDoubleClick,
+    required this.onCall,
     required this.onToggleNest,
     required this.onNestMoved,
   });
@@ -34,6 +35,9 @@ class NoxView extends StatefulWidget {
 
   /// Called when Nox is double-clicked (opens the "Aujourd'hui" panel).
   final VoidCallback onDoubleClick;
+
+  /// A click on the island: the owl is called, the chat opens.
+  final VoidCallback onCall;
 
   /// Right click on Nox: sends him to his nest, or brings him out.
   final VoidCallback onToggleNest;
@@ -104,7 +108,7 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
       widget.onMouseOver(over);
     }
 
-    if (brain.takeCall()) widget.onDoubleClick();
+    if (brain.takeCall()) widget.onCall();
     if (brain.takeNestMoved()) widget.onNestMoved();
 
     brain.pose.changed();
