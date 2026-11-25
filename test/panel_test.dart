@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/today_panel.dart';
+import 'package:noxo/assistant/today_panel.dart';
 
 void main() {
   testWidgets('the panel shows its tabs and switches between them', (tester) async {

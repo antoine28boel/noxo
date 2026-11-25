@@ -18,11 +18,12 @@ import 'assistant/spotify_client.dart';
 import 'assistant/chat.dart';
 import 'assistant/today_panel.dart';
 import 'assistant/vikunja_client.dart';
-import 'nox/brain.dart';
-import 'nox/feather.dart';
-import 'nox/nox_view.dart';
+import 'noxo/brain.dart';
+import 'noxo/feather.dart';
+import 'noxo/noxo_view.dart';
 import 'update/updater.dart';
 import 'win/win_desktop.dart';
+import 'win/native.dart';
 
 Future<void> main(List<String> args) async {
   // The unpacked new version replacing the old one: no window, no tray.
@@ -38,12 +39,12 @@ Future<void> main(List<String> args) async {
   await acrylic.Window.initialize();
 
   const options = WindowOptions(
-    size: kNoxWindowSize,
+    size: kNoxoWindowSize,
     backgroundColor: Colors.transparent,
     skipTaskbar: true,
     alwaysOnTop: true,
     titleBarStyle: TitleBarStyle.hidden,
-    title: 'Nox',
+    title: 'Noxo',
   );
   final desktop = WinDesktop(WinDesktop.findOwnWindow());
   await windowManager.waitUntilReadyToShow(options, () async {
@@ -53,21 +54,23 @@ Future<void> main(List<String> args) async {
     await acrylic.Window.setEffect(effect: acrylic.WindowEffect.transparent);
     desktop.makeLayered();
     desktop.setClickThrough(true);
-    // Inactive: Nox must not take the focus from the app in use.
+    // Inactive: Noxo must not take the focus from the app in use.
     await windowManager.show(inactive: true);
   });
 
+  _keepNoxSettings();
   final prefs = await SharedPreferences.getInstance();
-  final mode = prefs.getString('mode') == 'espiegle' ? NoxMode.espiegle : NoxMode.sage;
+  final mode = prefs.getString('mode') == 'espiegle' ? NoxoMode.espiegle : NoxoMode.sage;
 
-  launchAtStartup.setup(appName: 'Nox', appPath: Platform.resolvedExecutable);
+  await _moveNoxStartup();
+  launchAtStartup.setup(appName: 'Noxo', appPath: Platform.resolvedExecutable);
 
   final pranks = {
-    for (final prank in NoxPrank.values)
+    for (final prank in NoxoPrank.values)
       if (prefs.getBool('prank_${prank.name}') ?? true) prank,
   };
 
-  final brain = NoxBrain(mode: mode, pranks: pranks)
+  final brain = NoxoBrain(mode: mode, pranks: pranks)
     ..scale = desktop.scale()
     ..workMode = prefs.getBool('work') ?? false
     ..nestX = prefs.getDouble('nest_x') ?? 0.5
@@ -76,21 +79,21 @@ Future<void> main(List<String> args) async {
   desktop.setFeatherImage(feather.bgra, feather.width, feather.height);
   brain.spawn(desktop, desktop.cursor());
 
-  runApp(NoxApp(brain: brain, desktop: desktop, prefs: prefs));
+  runApp(NoxoApp(brain: brain, desktop: desktop, prefs: prefs));
 }
 
-class NoxApp extends StatefulWidget {
-  const NoxApp({super.key, required this.brain, required this.desktop, required this.prefs});
+class NoxoApp extends StatefulWidget {
+  const NoxoApp({super.key, required this.brain, required this.desktop, required this.prefs});
 
-  final NoxBrain brain;
+  final NoxoBrain brain;
   final WinDesktop desktop;
   final SharedPreferences prefs;
 
   @override
-  State<NoxApp> createState() => _NoxAppState();
+  State<NoxoApp> createState() => _NoxoAppState();
 }
 
-class _NoxAppState extends State<NoxApp> with TrayListener {
+class _NoxoAppState extends State<NoxoApp> with TrayListener {
   bool _startup = false;
 
   /// Folded sections of the panel and the dashboard of the "Maison" tab.
@@ -99,7 +102,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     write: (key, value) => widget.prefs.setString(key, value),
   );
 
-  /// An update Nox is offering, waiting for a yes or a no.
+  /// An update Noxo is offering, waiting for a yes or a no.
   UpdateInfo? _update;
   bool _installing = false;
 
@@ -210,13 +213,13 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     return brief != null && brief.day == dayKey(DateTime.now()) ? brief : null;
   }
 
-  /// Nox holds an envelope while he has news: an update or an unread brief.
+  /// Noxo holds an envelope while he has news: an update or an unread brief.
   void _updateCarrying() {
     final brief = _todayBrief;
     widget.brain.carrying = _update != null || (brief != null && !brief.read);
   }
 
-  /// At the first sign of life of the day, Nox fetches the day and brings
+  /// At the first sign of life of the day, Noxo fetches the day and brings
   /// the brief. Checked every minute.
   Future<void> _checkBrief() async {
     // Yesterday's unread brief is no longer news.
@@ -333,7 +336,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     return null;
   }
 
-  /// Kept while Nox runs, so its access token is reused.
+  /// Kept while Noxo runs, so its access token is reused.
   late SpotifyClient? _spotify = _makeSpotify();
 
   SpotifyClient? _makeSpotify() {
@@ -400,7 +403,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     _outsideClick?.cancel();
     _outsideClick = null;
     if (!_panelOpen) return;
-    widget.desktop.leavePanel(kNoxWindowSize);
+    widget.desktop.leavePanel(kNoxoWindowSize);
     setState(() => _panelOpen = false);
   }
 
@@ -417,14 +420,14 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     _firstToday = Timer(const Duration(seconds: 5), _refreshToday);
     _loadBrief();
     _updateCarrying();
-    // Lets the installer that started this Nox finish before cleaning up.
+    // Lets the installer that started this Noxo finish before cleaning up.
     _cleanUpdate = Timer(const Duration(seconds: 30), cleanUpdate);
     _briefTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkBrief());
   }
 
   Timer? _firstToday;
 
-  /// Looks for a newer build; if there is one, Nox brings it as news.
+  /// Looks for a newer build; if there is one, Noxo brings it as news.
   /// [manual] also re-offers a build that was declined before.
   Future<void> _checkForUpdate({bool manual = false}) async {
     if (_installing) return;
@@ -473,12 +476,12 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     } catch (_) {
       _startup = false;
     }
-    await trayManager.setIcon('assets/nox.ico');
-    await trayManager.setToolTip('Nox veille');
+    await trayManager.setIcon('assets/noxo.ico');
+    await trayManager.setToolTip('Noxo veille');
     await _refreshMenu();
   }
 
-  /// Sends Nox to his nest (the island at the top of the screen) or out.
+  /// Sends Noxo to his nest (the island at the top of the screen) or out.
   Future<void> _toggleNest() async {
     final on = !widget.brain.workMode;
     widget.brain.setWorkMode(on, widget.desktop);
@@ -494,7 +497,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
         items: [
           MenuItem(
             key: 'title',
-            label: kNoxBuild > 0 ? 'Nox — version $kNoxBuild' : 'Nox — version locale',
+            label: kNoxoBuild > 0 ? 'Noxo — version $kNoxoBuild' : 'Noxo — version locale',
             disabled: true,
           ),
           MenuItem.separator(),
@@ -503,7 +506,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
               key: 'update_title',
               label: _installing
                   ? 'Mise à jour en cours…'
-                  : 'Nox apporte une mise à jour (version ${update.build})',
+                  : 'Noxo apporte une mise à jour (version ${update.build})',
               disabled: true,
             ),
             if (_updateError != null && !_installing)
@@ -512,15 +515,15 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
             if (!_installing) MenuItem(key: 'update_decline', label: 'Refuser'),
             MenuItem.separator(),
           ],
-          MenuItem.checkbox(key: 'sage', label: 'Mode sage', checked: mode == NoxMode.sage),
+          MenuItem.checkbox(key: 'sage', label: 'Mode sage', checked: mode == NoxoMode.sage),
           MenuItem.checkbox(
             key: 'espiegle',
             label: 'Mode espiègle',
-            checked: mode == NoxMode.espiegle,
+            checked: mode == NoxoMode.espiegle,
           ),
           MenuItem.separator(),
           MenuItem(key: 'pranks', label: 'Bêtises (mode espiègle)', disabled: true),
-          for (final prank in NoxPrank.values)
+          for (final prank in NoxoPrank.values)
             MenuItem.checkbox(
               key: 'prank_${prank.name}',
               label: _prankLabels[prank]!,
@@ -536,7 +539,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
             key: 'today',
             label: _todayBrief?.read == false ? "Aujourd'hui (brief à lire)" : "Aujourd'hui",
           ),
-          MenuItem(key: 'recall', label: 'Rappeler Nox'),
+          MenuItem(key: 'recall', label: 'Rappeler Noxo'),
           MenuItem.checkbox(
             key: 'startup',
             label: 'Lancer au démarrage de Windows',
@@ -551,13 +554,13 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
   }
 
   static const _prankLabels = {
-    NoxPrank.chase: 'Chasser le curseur',
-    NoxPrank.feather: 'Laisser une plume',
-    NoxPrank.peck: 'Picorer une icône',
-    NoxPrank.push: 'Pousser la fenêtre',
+    NoxoPrank.chase: 'Chasser le curseur',
+    NoxoPrank.feather: 'Laisser une plume',
+    NoxoPrank.peck: 'Picorer une icône',
+    NoxoPrank.push: 'Pousser la fenêtre',
   };
 
-  Future<void> _togglePrank(NoxPrank prank) async {
+  Future<void> _togglePrank(NoxoPrank prank) async {
     final pranks = widget.brain.pranks;
     final on = !pranks.contains(prank);
     on ? pranks.add(prank) : pranks.remove(prank);
@@ -565,7 +568,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     await _refreshMenu();
   }
 
-  Future<void> _setMode(NoxMode mode) async {
+  Future<void> _setMode(NoxoMode mode) async {
     widget.brain.mode = mode;
     await widget.prefs.setString('mode', mode.name);
     await _refreshMenu();
@@ -579,7 +582,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
 
   @override
   Future<void> onTrayMenuItemClick(MenuItem menuItem) async {
-    for (final prank in NoxPrank.values) {
+    for (final prank in NoxoPrank.values) {
       if (menuItem.key == 'prank_${prank.name}') {
         await _togglePrank(prank);
         return;
@@ -587,9 +590,9 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
     }
     switch (menuItem.key) {
       case 'sage':
-        await _setMode(NoxMode.sage);
+        await _setMode(NoxoMode.sage);
       case 'espiegle':
-        await _setMode(NoxMode.espiegle);
+        await _setMode(NoxoMode.espiegle);
       case 'today':
         _panelOpen ? _closePanel() : _openPanel();
       case 'work':
@@ -674,7 +677,7 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
                 haAgent: _haAgent,
                 onSaveAgent: _saveAgent,
               )
-            : NoxView(
+            : NoxoView(
                 brain: widget.brain,
                 desktop: widget.desktop,
                 onMouseOver: (over) => widget.desktop.setClickThrough(!over),
@@ -688,5 +691,35 @@ class _NoxAppState extends State<NoxApp> with TrayListener {
               ),
       ),
     );
+  }
+}
+
+/// Settings saved under the old name "Nox" (tokens, servers…) are copied to
+/// Noxo's folder the first time Noxo starts.
+void _keepNoxSettings() {
+  final appData = Platform.environment['APPDATA'];
+  if (!Platform.isWindows || appData == null) return;
+  const file = 'shared_preferences.json';
+  final now = File('$appData\\fr.noxo\\noxo\\$file');
+  final before = File('$appData\\fr.nox\\nox\\$file');
+  try {
+    if (now.existsSync() || !before.existsSync()) return;
+    now.parent.createSync(recursive: true);
+    before.copySync(now.path);
+  } on FileSystemException {
+    // Noxo starts with fresh settings.
+  }
+}
+
+/// Replaces the old "Nox" launch at Windows startup by Noxo's.
+Future<void> _moveNoxStartup() async {
+  try {
+    if (!Platform.isWindows || !hasStartupEntry('Nox')) return;
+    launchAtStartup.setup(appName: 'Nox', appPath: Platform.resolvedExecutable);
+    await launchAtStartup.disable();
+    launchAtStartup.setup(appName: 'Noxo', appPath: Platform.resolvedExecutable);
+    await launchAtStartup.enable();
+  } catch (_) {
+    // Left as it is: can be set again from the menu.
   }
 }

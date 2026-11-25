@@ -18,7 +18,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
-  // Integrated GPU: on laptops with two GPUs, Nox must not wake the
+  // Integrated GPU: on laptops with two GPUs, Noxo must not wake the
   // discrete one (it drains the battery and starts its vendor's utility).
   project.set_gpu_preference(flutter::GpuPreference::LowPowerPreference);
 
@@ -30,11 +30,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(200, 180);
-  // The title "Nox" is how the Dart side finds this window (FindWindow).
-  if (!window.Create(L"Nox", origin, size)) {
+  // The title "Noxo" is how the Dart side finds this window (FindWindow).
+  if (!window.Create(L"Noxo", origin, size)) {
     return EXIT_FAILURE;
   }
-  // Nox never steals focus and stays out of Alt+Tab.
+  // Noxo never steals focus and stays out of Alt+Tab.
   HWND hwnd = window.GetHandle();
   ::SetWindowLongPtr(hwnd, GWL_EXSTYLE,
                      ::GetWindowLongPtr(hwnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW |

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/ha_client.dart';
-import 'package:nox/assistant/ha_dashboard.dart';
-import 'package:nox/assistant/panel_style.dart';
-import 'package:nox/assistant/panel_tabs.dart';
+import 'package:noxo/assistant/ha_client.dart';
+import 'package:noxo/assistant/ha_dashboard.dart';
+import 'package:noxo/assistant/panel_style.dart';
+import 'package:noxo/assistant/panel_tabs.dart';
 
 class _FakeHa extends HaClient {
   const _FakeHa() : super('https://ha.test', 'jeton');

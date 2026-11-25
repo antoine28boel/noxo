@@ -8,7 +8,7 @@ import 'ha_dashboard.dart';
 import 'home.dart';
 import 'today.dart';
 
-/// A problem Nox can explain to the user (wrong token, unexpected answer…).
+/// A problem Noxo can explain to the user (wrong token, unexpected answer…).
 class HaException implements Exception {
   const HaException(this.message);
   final String message;
@@ -38,7 +38,7 @@ class HaClient {
   }) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10)
-      ..userAgent = 'nox';
+      ..userAgent = 'noxo';
     try {
       final request = await client.openUrl(method, uri);
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
@@ -257,14 +257,14 @@ class HaClient {
   }
 
   /// Asks Home Assistant's AI (its default "AI task" entity) to write the
-  /// morning brief. Null when no AI is set up or it fails: Nox then writes
+  /// morning brief. Null when no AI is set up or it fails: Noxo then writes
   /// it himself.
   Future<String?> aiBrief(TodayData data, DateTime now) async {
     try {
       final json = await _request(
         'POST',
         _uri('/api/services/ai_task/generate_data', const {'return_response': ''}),
-        body: {'task_name': 'Brief du matin de Nox', 'instructions': briefInstructions(data, now)},
+        body: {'task_name': 'Brief du matin de Noxo', 'instructions': briefInstructions(data, now)},
         timeout: const Duration(seconds: 60),
       );
       return parseAiTaskText(json);

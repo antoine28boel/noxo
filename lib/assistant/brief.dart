@@ -1,4 +1,4 @@
-// The morning brief: what Nox brings at the first sign of life of the day.
+// The morning brief: what Noxo brings at the first sign of life of the day.
 //
 // Pure Dart: the simple offline text, the request sent to Home Assistant's
 // AI, and when the brief is due.
@@ -31,7 +31,7 @@ String _greeting(DateTime now) {
 
 const _wet = {'rainy', 'pouring', 'lightning-rainy', 'hail', 'snowy-rainy'};
 
-/// The brief Nox writes by himself, without any AI: works offline. A short
+/// The brief Noxo writes by himself, without any AI: works offline. A short
 /// word on what matters; the details are in the panel's sections.
 String offlineBrief(TodayData data, DateTime now) {
   final words = <String>['${_greeting(now)} !'];
@@ -80,7 +80,7 @@ String briefInstructions(TodayData data, DateTime now) {
     if (data.tasks.isEmpty) 'Tâches : aucune.',
     for (final t in data.tasks) 'Tâche à faire : $t.',
   ];
-  return 'Tu es Nox, un petit hibou assistant, bienveillant et un peu malicieux. '
+  return 'Tu es Noxo, un petit hibou assistant, bienveillant et un peu malicieux. '
       'Rédige en français, en tutoyant, le mot de début de journée de ton '
       'humain : 1 à 3 phrases courtes, sans liste ni titre ni emoji, '
       'en commençant par une salutation adaptée à l\'heure. L\'agenda, la '

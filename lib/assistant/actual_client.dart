@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'budget.dart';
 
-/// A problem Nox can explain to the user (wrong key, unknown budget…).
+/// A problem Noxo can explain to the user (wrong key, unknown budget…).
 class ActualException implements Exception {
   const ActualException(this.message, {this.status});
   final String message;
@@ -62,7 +62,7 @@ class ActualClient {
   }) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10)
-      ..userAgent = 'nox';
+      ..userAgent = 'noxo';
     // The first call of a budget downloads it from the Actual server.
     const timeout = Duration(seconds: 40);
     try {

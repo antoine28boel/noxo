@@ -25,20 +25,20 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      # NOX_BUILD is how a running Nox knows whether a release is newer.
-      - run: flutter build windows --release --dart-define=NOX_BUILD=${{ github.run_number }}
+      # NOXO_BUILD is how a running Noxo knows whether a release is newer.
+      - run: flutter build windows --release --dart-define=NOXO_BUILD=${{ github.run_number }}
 
       - uses: actions/upload-artifact@v7
         with:
-          name: nox-windows
+          name: noxo-windows
           path: build/windows/x64/runner/Release/
 
-      # Each build of main becomes a release; Nox offers it as an update.
+      # Each build of main becomes a release; Noxo offers it as an update.
       - name: Publish release
         if: github.ref == 'refs/heads/release' || github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath nox-windows.zip
-          gh release create "build-${{ github.run_number }}" nox-windows.zip --title "Nox ${{ github.run_number }}" --generate-notes --target "${{ github.sha }}"
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath noxo-windows.zip
+          gh release create "build-${{ github.run_number }}" noxo-windows.zip --title "Noxo ${{ github.run_number }}" --generate-notes --target "${{ github.sha }}"

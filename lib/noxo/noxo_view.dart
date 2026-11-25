@@ -8,14 +8,14 @@ import '../win/win_desktop.dart';
 import 'brain.dart';
 import 'owl_painter.dart';
 
-/// Size of Nox's window and where his feet sit inside it (logical pixels).
-const kNoxWindowSize = NoxGeometry.windowSize;
-const kNoxFeet = NoxGeometry.windowFeet;
+/// Size of Noxo's window and where his feet sit inside it (logical pixels).
+const kNoxoWindowSize = NoxoGeometry.windowSize;
+const kNoxoFeet = NoxoGeometry.windowFeet;
 
-/// Runs Nox's brain, moves his window and draws him: every frame while he
-/// moves, a few times a second when he is calm ([NoxBrain.frameRate]).
-class NoxView extends StatefulWidget {
-  const NoxView({
+/// Runs Noxo's brain, moves his window and draws him: every frame while he
+/// moves, a few times a second when he is calm ([NoxoBrain.frameRate]).
+class NoxoView extends StatefulWidget {
+  const NoxoView({
     super.key,
     required this.brain,
     required this.desktop,
@@ -26,30 +26,30 @@ class NoxView extends StatefulWidget {
     required this.onNestMoved,
   });
 
-  final NoxBrain brain;
+  final NoxoBrain brain;
   final WinDesktop desktop;
 
-  /// Called when the cursor enters (true) or leaves (false) Nox's body, so
-  /// the window only catches clicks on Nox and lets the rest through.
+  /// Called when the cursor enters (true) or leaves (false) Noxo's body, so
+  /// the window only catches clicks on Noxo and lets the rest through.
   final ValueChanged<bool> onMouseOver;
 
-  /// Called when Nox is double-clicked (opens the "Aujourd'hui" panel).
+  /// Called when Noxo is double-clicked (opens the "Aujourd'hui" panel).
   final VoidCallback onDoubleClick;
 
   /// A click on the island: the owl is called, the chat opens.
   final VoidCallback onCall;
 
-  /// Right click on Nox: sends him to his nest, or brings him out.
+  /// Right click on Noxo: sends him to his nest, or brings him out.
   final VoidCallback onToggleNest;
 
   /// The nest was dragged to a new place.
   final VoidCallback onNestMoved;
 
   @override
-  State<NoxView> createState() => _NoxViewState();
+  State<NoxoView> createState() => _NoxoViewState();
 }
 
-class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
+class _NoxoViewState extends State<NoxoView> with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
   Timer? _timer;
   final _clock = Stopwatch()..start();
@@ -67,7 +67,7 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
     _schedule();
   }
 
-  /// Ticker (every frame) for a smooth Nox, timer when he can go slower.
+  /// Ticker (every frame) for a smooth Noxo, timer when he can go slower.
   void _schedule() {
     final fps = widget.brain.frameRate;
     if (fps >= 60) {
@@ -93,8 +93,8 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
     brain.update(dt, desktop);
 
     final s = brain.scale;
-    final x = (brain.pos.dx - kNoxFeet.dx * s).round();
-    final y = (brain.pos.dy - kNoxFeet.dy * s).round();
+    final x = (brain.pos.dx - kNoxoFeet.dx * s).round();
+    final y = (brain.pos.dy - kNoxoFeet.dy * s).round();
     if (x != _lastX || y != _lastY) {
       _lastX = x;
       _lastY = y;
@@ -102,7 +102,7 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
     }
     desktop.showFeather(brain.hidden ? null : brain.featherPos, brain.featherOpacity);
 
-    final over = brain.state == NoxState.dragged || brain.hitTest(desktop.cursor());
+    final over = brain.state == NoxoState.dragged || brain.hitTest(desktop.cursor());
     if (over != _over) {
       _over = over;
       widget.onMouseOver(over);
@@ -133,8 +133,8 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
           widget.onToggleNest();
           return;
         }
-        if (brain.state == NoxState.docked) {
-          // In the island a single click calls Nox: it opens the assistant.
+        if (brain.state == NoxoState.docked) {
+          // In the island a single click calls Noxo: it opens the assistant.
           brain.press(widget.desktop.cursor());
           return;
         }
@@ -149,8 +149,8 @@ class _NoxViewState extends State<NoxView> with SingleTickerProviderStateMixin {
         widget.brain.startDrag(widget.desktop.cursor());
       },
       child: CustomPaint(
-        size: kNoxWindowSize,
-        painter: OwlPainter(pose: widget.brain.pose, feet: kNoxFeet),
+        size: kNoxoWindowSize,
+        painter: OwlPainter(pose: widget.brain.pose, feet: kNoxoFeet),
       ),
     );
   }

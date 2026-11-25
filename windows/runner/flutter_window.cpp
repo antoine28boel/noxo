@@ -28,7 +28,7 @@ bool FlutterWindow::OnCreate() {
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   // The window stays hidden here: the Dart side shows it without activating
-  // it once it is configured (lib/main.dart), so Nox never flashes at startup
+  // it once it is configured (lib/main.dart), so Noxo never flashes at startup
   // and never takes the keyboard focus.
 
   return true;

@@ -2,9 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/nox/brain.dart';
-import 'package:nox/nox/desktop.dart';
-import 'package:nox/nox/feather.dart';
+import 'package:noxo/noxo/brain.dart';
+import 'package:noxo/noxo/desktop.dart';
+import 'package:noxo/noxo/feather.dart';
 
 /// A fake 1920x1080 screen with a 40 px taskbar and a few windows.
 class FakeDesktop implements Desktop {
@@ -63,7 +63,7 @@ class FakeDesktop implements Desktop {
   List<Offset> desktopIcons() => icons;
 }
 
-void run(NoxBrain b, Desktop d, double seconds) {
+void run(NoxoBrain b, Desktop d, double seconds) {
   const dt = 1 / 60;
   for (var t = 0.0; t < seconds; t += dt) {
     b.update(dt, d);
@@ -72,19 +72,19 @@ void run(NoxBrain b, Desktop d, double seconds) {
 
 void main() {
   late FakeDesktop d;
-  late NoxBrain b;
+  late NoxoBrain b;
 
   setUp(() {
     d = FakeDesktop();
     d.windows[1] = const Rect.fromLTWH(400, 300, 900, 600);
     d.foreground = 1;
-    b = NoxBrain(random: math.Random(1));
+    b = NoxoBrain(random: math.Random(1));
   });
 
   test('lands on the title bar of the foreground window', () {
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.perch?.handle, 1);
     expect(b.pos.dy, 300);
     expect(b.pos.dx, inInclusiveRange(400, 1300));
@@ -98,7 +98,7 @@ void main() {
       d.windows[1] = d.windows[1]!.shift(const Offset(2, 1));
       b.update(1 / 60, d);
     }
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.pos, before + const Offset(60, 30));
   });
 
@@ -107,7 +107,7 @@ void main() {
     run(b, d, 6);
     d.windows[1] = d.windows[1]!.shift(const Offset(200, 0));
     b.update(1 / 60, d);
-    expect(b.state, NoxState.flying);
+    expect(b.state, NoxoState.flying);
   });
 
   test('falls then flies away when the window is minimized', () {
@@ -115,9 +115,9 @@ void main() {
     run(b, d, 6);
     d.hidden.add(1);
     b.update(1 / 60, d);
-    expect(b.state, NoxState.falling);
+    expect(b.state, NoxoState.falling);
     run(b, d, 8);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.perch?.isFloor, isTrue);
     expect(b.pos.dy, FakeDesktop.work.bottom);
   });
@@ -143,14 +143,14 @@ void main() {
       d.cursorPos += const Offset(20, -5);
       b.update(1 / 60, d);
     }
-    expect(b.state, NoxState.dragged);
+    expect(b.state, NoxoState.dragged);
     expect(b.pos, d.cursorPos + const Offset(0, 50));
     d.button = false;
     b.update(1 / 60, d);
-    expect(b.state, NoxState.falling);
+    expect(b.state, NoxoState.falling);
     expect(b.vel.dx, greaterThan(0));
     run(b, d, 10);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
   });
 
   test('a plain click leaves him on his perch', () {
@@ -161,10 +161,10 @@ void main() {
     b.startDrag(d.cursorPos);
     d.button = true;
     run(b, d, 0.1);
-    expect(b.state, NoxState.dragged);
+    expect(b.state, NoxoState.dragged);
     d.button = false;
     b.update(1 / 60, d);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.perch?.handle, 1);
     expect(b.pos, before);
   });
@@ -191,7 +191,7 @@ void main() {
   });
 
   test('espiègle follows the window you switch to', () {
-    b.mode = NoxMode.espiegle;
+    b.mode = NoxoMode.espiegle;
     b.pranks.clear();
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);
@@ -207,11 +207,11 @@ void main() {
   });
 
   group('pranks', () {
-    NoxBrain prankster(NoxPrank prank) =>
-        NoxBrain(random: math.Random(1), mode: NoxMode.espiegle, pranks: {prank});
+    NoxoBrain prankster(NoxoPrank prank) =>
+        NoxoBrain(random: math.Random(1), mode: NoxoMode.espiegle, pranks: {prank});
 
     test('chases and catches the cursor', () {
-      b = prankster(NoxPrank.chase);
+      b = prankster(NoxoPrank.chase);
       b.spawn(d, const Offset(800, 500));
       run(b, d, 600);
       expect(b.catches, greaterThan(0));
@@ -221,7 +221,7 @@ void main() {
     });
 
     test('lets clicks through while hunting', () {
-      b = prankster(NoxPrank.chase);
+      b = prankster(NoxoPrank.chase);
       b.spawn(d, const Offset(800, 500));
       var hunted = false;
       for (var i = 0; i < 600 * 60 && !hunted; i++) {
@@ -229,12 +229,12 @@ void main() {
         hunted = b.hunting;
       }
       expect(hunted, isTrue);
-      expect(b.state, NoxState.flying);
+      expect(b.state, NoxoState.flying);
       expect(b.hitTest(b.pos + const Offset(0, -50)), isFalse);
     });
 
     test('pushes the window he is perched on, a little', () {
-      b = prankster(NoxPrank.push);
+      b = prankster(NoxoPrank.push);
       b.spawn(d, const Offset(800, 500));
       final before = d.windows[1]!;
       run(b, d, 600);
@@ -245,7 +245,7 @@ void main() {
     });
 
     test('pecks at a desktop icon then leaves', () {
-      b = prankster(NoxPrank.peck);
+      b = prankster(NoxoPrank.peck);
       d.icons.add(const Offset(100, 100));
       b.spawn(d, const Offset(800, 500));
       var pecking = false;
@@ -261,14 +261,14 @@ void main() {
     });
 
     test('does not peck when no icon is visible', () {
-      b = prankster(NoxPrank.peck);
+      b = prankster(NoxoPrank.peck);
       b.spawn(d, const Offset(800, 500));
       run(b, d, 300);
       expect(b.pecks, 0);
     });
 
     test('drops a feather when shaken off, and it fades away', () {
-      b = prankster(NoxPrank.feather);
+      b = prankster(NoxoPrank.feather);
       b.spawn(d, const Offset(800, 500));
       run(b, d, 6);
       expect(b.perch?.handle, 1);
@@ -288,7 +288,7 @@ void main() {
       d.icons.add(const Offset(100, 100));
       b.spawn(d, const Offset(800, 500));
       run(b, d, 300);
-      final off = NoxBrain(random: math.Random(2), mode: NoxMode.espiegle, pranks: {});
+      final off = NoxoBrain(random: math.Random(2), mode: NoxoMode.espiegle, pranks: {});
       off.spawn(d, const Offset(800, 500));
       run(off, d, 300);
       for (final brain in [b, off]) {
@@ -321,7 +321,7 @@ void main() {
     b.scale = 2;
     b.spawn(d, const Offset(800, 500));
     run(b, d, 8);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.hitTest(b.pos + const Offset(0, -100)), isTrue);
     expect(b.hitTest(b.pos + const Offset(0, -260)), isFalse);
   });
@@ -331,7 +331,7 @@ void main() {
     run(b, d, 6);
     b.setWorkMode(true, d);
     run(b, d, 6);
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
     expect(b.pos.dx, FakeDesktop.screen.center.dx);
     expect(b.pose.island, 1);
     final island = b.islandRect();
@@ -341,14 +341,14 @@ void main() {
     // Stays put when windows change.
     d.foreground = null;
     run(b, d, 30);
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
   });
 
   test('work mode: the island opens only while hovered', () {
     b.workMode = true;
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
     final small = b.islandRect();
     run(b, d, 10);
     expect(b.listening, isFalse);
@@ -363,16 +363,16 @@ void main() {
     run(b, d, 0.5);
     expect(b.listening, isFalse);
     expect(b.islandRect().width, closeTo(small.width, 0.5));
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
   });
 
-  test('leaving work mode sends Nox back to perching', () {
+  test('leaving work mode sends Noxo back to perching', () {
     b.workMode = true;
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);
     b.setWorkMode(false, d);
     run(b, d, 8);
-    expect(b.state, NoxState.perched);
+    expect(b.state, NoxoState.perched);
     expect(b.pose.island, 0);
   });
 
@@ -380,7 +380,7 @@ void main() {
     b.workMode = true;
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
     d.cursorPos = b.islandRect().center;
     b.press(d.cursorPos);
     d.button = true;
@@ -395,10 +395,10 @@ void main() {
     expect(b.nestBottom, isTrue);
     expect(b.nestX, closeTo(d.cursorPos.dx / 1920, 0.01));
     expect(b.islandRect().bottom, closeTo(FakeDesktop.work.bottom - 6, 1));
-    expect(b.state, NoxState.docked);
+    expect(b.state, NoxoState.docked);
   });
 
-  test('nest: a click without moving calls Nox', () {
+  test('nest: a click without moving calls Noxo', () {
     b.workMode = true;
     b.spawn(d, const Offset(800, 500));
     run(b, d, 6);

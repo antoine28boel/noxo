@@ -73,7 +73,7 @@ class TodayPanel extends StatefulWidget {
   /// Last data fetched (possibly from the offline cache), or null.
   final TodayData? data;
 
-  /// Today's brief, if Nox has brought one.
+  /// Today's brief, if Noxo has brought one.
   final Brief? brief;
 
   /// Whether a Home Assistant address and token are saved.
@@ -182,7 +182,7 @@ class _TodayPanelState extends State<TodayPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _settings ? 'Réglages' : 'Nox',
+                  _settings ? 'Réglages' : 'Noxo',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
                 Text(
@@ -247,7 +247,7 @@ class _TodayPanelState extends State<TodayPanel> {
   Widget _tabs() {
     Widget missing(String what) => Padding(
       padding: const EdgeInsets.all(18),
-      child: PanelNote('Nox n\'est pas encore relié à $what. Ouvre « Réglages ».'),
+      child: PanelNote('Noxo n\'est pas encore relié à $what. Ouvre « Réglages ».'),
     );
     Widget keyed(Widget child) => KeyedSubtree(key: ValueKey(_reload), child: child);
     final client = widget.client;
@@ -484,7 +484,7 @@ class _ActualFormState extends State<_ActualForm> {
       title: 'Actual Budget',
       children: [
         const Text(
-          'Nox passe par actual-http-api (conteneur jhonderson/actual-http-api, '
+          'Noxo passe par actual-http-api (conteneur jhonderson/actual-http-api, '
           'port 5007) installé à côté de ton serveur Actual. Indique son adresse, '
           'sa clé (API_KEY) et l\'ID de synchronisation du budget (Actual → '
           'Paramètres → Avancé). La clé reste sur ce PC.',

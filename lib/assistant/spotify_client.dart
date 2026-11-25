@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'spotify.dart';
 
-/// A problem Nox can explain to the user (no Premium, no device…).
+/// A problem Noxo can explain to the user (no Premium, no device…).
 class SpotifyException implements Exception {
   const SpotifyException(this.message, {this.status});
   final String message;
@@ -25,7 +25,7 @@ Future<void> openInBrowser(Uri uri) async {
   }
 }
 
-const _page = '''<!doctype html><meta charset="utf-8"><title>Nox</title>
+const _page = '''<!doctype html><meta charset="utf-8"><title>Noxo</title>
 <body style="font-family:sans-serif;background:#2B211A;color:#F5E9D3;text-align:center;padding-top:20vh">
 <h1>%s</h1><p>Tu peux fermer cet onglet.</p></body>''';
 
@@ -65,7 +65,7 @@ class SpotifyClient {
         final ok = q['state'] == state && q['code'] != null;
         request.response.headers.contentType = ContentType.html;
         request.response.write(
-          _page.replaceFirst('%s', ok ? 'Nox est relié à Spotify' : 'Connexion à Spotify refusée'),
+          _page.replaceFirst('%s', ok ? 'Noxo est relié à Spotify' : 'Connexion à Spotify refusée'),
         );
         await request.response.close();
         if (!ok) throw const SpotifyException('Connexion à Spotify refusée.');
@@ -148,7 +148,7 @@ class SpotifyClient {
     final token = await _accessToken();
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10)
-      ..userAgent = 'nox';
+      ..userAgent = 'noxo';
     try {
       final request = await client.openUrl(method, Uri.https('api.spotify.com', '/v1$path', query));
       request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');

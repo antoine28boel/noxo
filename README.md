@@ -1,6 +1,6 @@
-# Nox
+# Noxo
 
-Nox est un petit hibou qui vit sur le bureau Windows : il se perche sur les
+Noxo est un petit hibou qui vit sur le bureau Windows : il se perche sur les
 fenêtres, vole de l'une à l'autre, suit la souris du regard et s'endort quand
 tu t'absentes. À terme, il deviendra l'assistant de vie (brief du jour,
 agenda, budget Actual) relié à Home Assistant.
@@ -8,22 +8,22 @@ agenda, budget Actual) relié à Home Assistant.
 ## Installer
 
 1. Onglet **Actions** du dépôt → dernier run **Build Windows** réussi.
-2. Télécharger l'artefact **nox-windows** et le dézipper.
-3. Lancer `nox.exe`.
+2. Télécharger l'artefact **noxo-windows** et le dézipper.
+3. Lancer `noxo.exe`.
 
-Nox apparaît en haut de l'écran et va se poser. Son icône est près de
+Noxo apparaît en haut de l'écran et va se poser. Son icône est près de
 l'horloge (clic gauche ou droit) :
 
 - **Mode sage** / **Mode espiègle**
-- **Nichoir (mode travail)** — aussi par **clic droit sur Nox** (et clic
-  droit sur l'île pour l'en sortir) : Nox s'installe en haut au centre de
+- **Nichoir (mode travail)** — aussi par **clic droit sur Noxo** (et clic
+  droit sur l'île pour l'en sortir) : Noxo s'installe en haut au centre de
   l'écran, dans une petite île noire où l'on ne voit que ses yeux. Un clic
   sur l'île l'appelle (elle s'agrandit, il écoute) ; un second clic le renvoie.
   L'île se **déplace en la faisant glisser** le long du haut de l'écran ou
-  du bas (au-dessus de la barre des tâches) ; Nox retient sa place. Quand la
+  du bas (au-dessus de la barre des tâches) ; Noxo retient sa place. Quand la
   souris approche, elle **se rétracte en un fin trait** et laisse passer les
   clics ; survoler le trait une demi-seconde la fait revenir.
-- **Rappeler Nox** : le fait revenir près de la souris (quitte le mode travail)
+- **Rappeler Noxo** : le fait revenir près de la souris (quitte le mode travail)
 - **Lancer au démarrage de Windows**
 - **Quitter**
 
@@ -51,11 +51,11 @@ l'horloge (clic gauche ou droit) :
 
 ```bash
 flutter pub get
-flutter test          # comportement de Nox (sans Windows)
+flutter test          # comportement de Noxo (sans Windows)
 flutter run -d windows
 ```
 
-- `lib/nox/brain.dart` : comportement (états, vol, perchage, sommeil).
-- `lib/nox/owl_painter.dart` : dessin de Nox (style A).
+- `lib/noxo/brain.dart` : comportement (états, vol, perchage, sommeil).
+- `lib/noxo/owl_painter.dart` : dessin de Noxo (style A).
 - `lib/win/win_desktop.dart` : accès aux fenêtres Windows (Win32).
 - `lib/main.dart` : fenêtre transparente, icône de notification, réglages.

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/ha_dashboard.dart';
-import 'package:nox/assistant/home.dart';
-import 'package:nox/assistant/panel_style.dart';
+import 'package:noxo/assistant/ha_dashboard.dart';
+import 'package:noxo/assistant/home.dart';
+import 'package:noxo/assistant/panel_style.dart';
 
 void main() {
   test('the dashboards list starts with the default one', () {

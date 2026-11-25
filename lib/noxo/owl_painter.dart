@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'pose.dart';
 
-/// Draws Nox (style A: round, plush-like), from the reference sketch.
+/// Draws Noxo (style A: round, plush-like), from the reference sketch.
 ///
 /// Drawing happens in the sketch's own coordinates (the owl's feet are at
 /// (200, 408)), then scaled down by [owlScale] around [feet].
@@ -16,13 +16,13 @@ class OwlPainter extends CustomPainter {
     this.windowSize = const Size(200, 180),
   }) : super(repaint: pose);
 
-  final NoxPose pose;
+  final NoxoPose pose;
 
   /// Position of the feet inside the widget, in logical pixels.
   final Offset feet;
   final double owlScale;
 
-  /// Size of Nox's window (logical px): the island is anchored to its edges.
+  /// Size of Noxo's window (logical px): the island is anchored to its edges.
   final Size windowSize;
 
   static const _plumage = Color(0xFF8B6B4F);
@@ -43,7 +43,7 @@ class OwlPainter extends CustomPainter {
     if (pose.island > 0) _islandPill(canvas);
   }
 
-  /// Nox flying up into the slot, head first, sucked toward its center.
+  /// Noxo flying up into the slot, head first, sucked toward its center.
   /// The black slot is drawn over him, so he vanishes into it.
   void _plungingOwl(Canvas canvas, Size size) {
     final k = plungeProgress(pose.island);
@@ -86,7 +86,7 @@ class OwlPainter extends CustomPainter {
   static const _night = Color(0xFF000000);
 
   /// The "dynamic island": a dark pill at the top of the screen where only
-  /// Nox's eyes show. Opened (expand = 1) when he is called.
+  /// Noxo's eyes show. Opened (expand = 1) when he is called.
   Rect _islandRect(double island, double expand, double retract) => islandBox(
     window: windowSize,
     centerX: feet.dx,
@@ -298,7 +298,7 @@ class OwlPainter extends CustomPainter {
     }
   }
 
-  /// The envelope Nox holds in his beak when he has news for you.
+  /// The envelope Noxo holds in his beak when he has news for you.
   void _envelope(Canvas canvas) {
     final dx = pose.headTurn * 12;
     final r = Rect.fromCenter(center: Offset(200 + dx, 304), width: 70, height: 46);

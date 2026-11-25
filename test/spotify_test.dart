@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/spotify.dart';
+import 'package:noxo/assistant/spotify.dart';
 
 void main() {
   test('PKCE: verifier and challenge (RFC 7636 example)', () {

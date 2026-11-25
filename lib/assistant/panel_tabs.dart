@@ -323,7 +323,7 @@ class _HomeTabState extends State<HomeTab> with _LiveTab<HomeTab, _HomeData> {
         _views = views;
         if (views.isEmpty) {
           _dashboardNote =
-              'Ce tableau de bord est généré par Home Assistant : Nox montre tous les appareils.';
+              'Ce tableau de bord est généré par Home Assistant : Noxo montre tous les appareils.';
         }
       });
     } on HaException catch (e) {

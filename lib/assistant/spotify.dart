@@ -1,4 +1,4 @@
-// What Nox knows about Spotify: playback, devices, playlists, search.
+// What Noxo knows about Spotify: playback, devices, playlists, search.
 //
 // Pure Dart: parsing of the Spotify Web API answers and the PKCE helpers,
 // so it can be tested without a network.
@@ -32,7 +32,7 @@ String pkceVerifier([Random? random]) {
 String pkceChallenge(String verifier) =>
     base64Url.encode(sha256.convert(ascii.encode(verifier)).bytes).replaceAll('=', '');
 
-/// The page where the user allows Nox to use their Spotify account.
+/// The page where the user allows Noxo to use their Spotify account.
 Uri spotifyAuthorizeUri(String clientId, String challenge, String state) =>
     Uri.https('accounts.spotify.com', '/authorize', {
       'client_id': clientId,

@@ -41,7 +41,7 @@ class MediaPlayer {
   bool get canNext => features & 32 != 0;
 }
 
-/// A device of the house Nox can show and control.
+/// A device of the house Noxo can show and control.
 class HomeDevice {
   const HomeDevice({
     required this.id,

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/actual_client.dart';
-import 'package:nox/assistant/budget.dart';
+import 'package:noxo/assistant/actual_client.dart';
+import 'package:noxo/assistant/budget.dart';
 
 void main() {
   test('accounts: closed ones left out, off-budget ones last', () {

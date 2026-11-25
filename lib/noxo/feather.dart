@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// Size of the feather Nox leaves behind, in logical pixels.
+/// Size of the feather Noxo leaves behind, in logical pixels.
 const kFeatherWidth = 44;
 const kFeatherHeight = 20;
 
@@ -29,7 +29,7 @@ const kFeatherHeight = 20;
         g = 0xE3;
         b = 0xC3;
       } else {
-        // Brown vane (Nox's plumage), darker towards the tip.
+        // Brown vane (Noxo's plumage), darker towards the tip.
         final t = ((u - 0.6) / 0.4).clamp(0.0, 1.0);
         r = (0x8B + (0x6B - 0x8B) * t).round();
         g = (0x6B + (0x4F - 0x6B) * t).round();

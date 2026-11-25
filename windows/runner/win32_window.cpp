@@ -246,7 +246,7 @@ void Win32Window::SetChildContent(HWND content) {
   MoveWindow(content, frame.left, frame.top, frame.right - frame.left,
              frame.bottom - frame.top, true);
 
-  // No SetFocus here: it would activate the window, and Nox must never take
+  // No SetFocus here: it would activate the window, and Noxo must never take
   // the focus from the app in use.
 }
 

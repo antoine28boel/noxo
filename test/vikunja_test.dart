@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/vikunja.dart';
-import 'package:nox/assistant/vikunja_client.dart';
+import 'package:noxo/assistant/vikunja.dart';
+import 'package:noxo/assistant/vikunja_client.dart';
 
 void main() {
   final projectsJson = [
@@ -28,8 +28,8 @@ void main() {
         {'title': 'En cours'},
       ],
     },
-    {'id': 13, 'title': 'Onglets Nox', 'project_id': 3, 'done': false},
-    {'id': 14, 'title': 'Vikunja dans Nox', 'project_id': 3, 'done': false},
+    {'id': 13, 'title': 'Onglets Noxo', 'project_id': 3, 'done': false},
+    {'id': 14, 'title': 'Vikunja dans Noxo', 'project_id': 3, 'done': false},
     {'id': 15, 'title': 'Fini', 'project_id': 3, 'done': true},
     {'title': 'sans id'},
   ];
@@ -83,7 +83,7 @@ void main() {
   test('tracking: in progress, Claude\'s tasks and project progress', () {
     final t = buildTracking(parseProjects(projectsJson), parseTasks(tasksJson), {10, 14});
     expect(t.inProgress.map((x) => x.title), ['Devis', 'Peindre']);
-    expect(t.claude!.map((x) => x.title), ['Vikunja dans Nox', 'Onglets Nox']);
+    expect(t.claude!.map((x) => x.title), ['Vikunja dans Noxo', 'Onglets Noxo']);
     expect(t.inProgressIds, {10, 12, 14});
     expect(t.projects.map((p) => p.path), ['Maison', 'Maison › Travaux']);
     final travaux = t.projects[1];

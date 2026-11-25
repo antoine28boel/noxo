@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/brief.dart';
-import 'package:nox/assistant/today.dart';
+import 'package:noxo/assistant/brief.dart';
+import 'package:noxo/assistant/today.dart';
 
 void main() {
   final morning = DateTime(2026, 11, 13, 8, 30);

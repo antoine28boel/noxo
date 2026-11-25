@@ -4,7 +4,7 @@ import 'dart:ui';
 
 import 'package:ffi/ffi.dart';
 
-// Win32 bindings for Nox's pranks (desktop icons, feather window), declared
+// Win32 bindings for Noxo's pranks (desktop icons, feather window), declared
 // here so they do not depend on the exact signatures of the win32 package.
 
 final _user32 = DynamicLibrary.open('user32.dll');
@@ -281,7 +281,7 @@ List<Offset> readDesktopIcons({int max = 200}) {
   }
 }
 
-/// A tiny click-through, always-on-top window that shows the feather Nox
+/// A tiny click-through, always-on-top window that shows the feather Noxo
 /// leaves behind. It is a per-pixel-alpha layered window, so it needs no
 /// window procedure of its own.
 class FeatherWindow {
@@ -379,5 +379,27 @@ class FeatherWindow {
     if (!_visible) return;
     _showWindow(hwnd, 0); // SW_HIDE
     _visible = false;
+  }
+}
+
+final _advapi32 = DynamicLibrary.open('advapi32.dll');
+
+final _regGetValue = _advapi32.lookupFunction<
+    Int32 Function(IntPtr, Pointer<Utf16>, Pointer<Utf16>, Uint32, Pointer<Uint32>,
+        Pointer<Void>, Pointer<Uint32>),
+    int Function(int, Pointer<Utf16>, Pointer<Utf16>, int, Pointer<Uint32>, Pointer<Void>,
+        Pointer<Uint32>)>('RegGetValueW');
+
+/// Whether Windows launches [name] at startup (a value in the user's Run key).
+bool hasStartupEntry(String name) {
+  const currentUser = 0x80000001;
+  const anyType = 0x0000ffff;
+  final key = r'Software\Microsoft\Windows\CurrentVersion\Run'.toNativeUtf16();
+  final value = name.toNativeUtf16();
+  try {
+    return _regGetValue(currentUser, key, value, anyType, nullptr, nullptr, nullptr) == 0;
+  } finally {
+    malloc.free(key);
+    malloc.free(value);
   }
 }

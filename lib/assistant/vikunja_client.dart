@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'vikunja.dart';
 
-/// A problem Nox can explain to the user (wrong token, unexpected answer…).
+/// A problem Noxo can explain to the user (wrong token, unexpected answer…).
 class VikunjaException implements Exception {
   const VikunjaException(this.message, {this.status});
   final String message;
@@ -48,7 +48,7 @@ class VikunjaClient {
   Future<(Object?, int)> _get(String path, [Map<String, String>? query]) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10)
-      ..userAgent = 'nox';
+      ..userAgent = 'noxo';
     const timeout = Duration(seconds: 20);
     try {
       final request = await client.getUrl(_uri(path, query));

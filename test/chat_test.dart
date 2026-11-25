@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/chat.dart';
+import 'package:noxo/assistant/chat.dart';
 
 void main() {
   group('parseConversationReply', () {

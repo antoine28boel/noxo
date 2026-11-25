@@ -1,4 +1,4 @@
-# Passation — projet Nox
+# Passation — projet Noxo
 
 Document de reprise pour une session Claude Code locale (PC Windows).
 Tout ce qui a été décidé jusqu'ici est ici ; le code est sur `main`.
@@ -13,7 +13,7 @@ Tout ce qui a été décidé jusqu'ici est ici ; le code est sur `main`.
 
 ## 2. Vision
 
-Un **assistant de vie** nommé **Nox**, un hibou :
+Un **assistant de vie** nommé **Noxo**, un hibou :
 
 - résumé de la journée, agenda, gestion financière, tâches ;
 - intégré à **Home Assistant** (HA), mais **disponible en permanence, même
@@ -28,9 +28,9 @@ Un **assistant de vie** nommé **Nox**, un hibou :
 
 ### Identité
 
-- Nom : **Nox** (veille nocturne, veille techno, « déconnexion du cloud » :
-  tout tourne en local). Devise possible : « Nox veille. Tes données dorment
-  chez toi. » Mot d'éveil vocal : « Hey Nox ».
+- Nom : **Noxo** (veille nocturne, veille techno, « déconnexion du cloud » :
+  tout tourne en local). Devise possible : « Noxo veille. Tes données dorment
+  chez toi. » Mot d'éveil vocal : « Hey Noxo ».
 - Style retenu : **A — mignon & arrondi** (façon peluche : plumage brun
   `#8B6B4F`, ventre crème, grands yeux ambrés, joues roses, aigrettes
   arrondies). Le design précis sera retravaillé plus tard.
@@ -66,7 +66,7 @@ Un **assistant de vie** nommé **Nox**, un hibou :
   vit sur le bureau et interagit avec les fenêtres).
 - **Android** : bulle flottante au-dessus des apps, widgets, notification
   permanente, synchro en arrière-plan ; distribution par **APK direct** (pas
-  de Play Store). Penser à exclure Nox de l'optimisation batterie.
+  de Play Store). Penser à exclure Noxo de l'optimisation batterie.
 - Données : stockage local d'abord (hors ligne), synchro avec HA quand
   joignable (API HA + jeton longue durée). Accès extérieur à HA : Nabu Casa
   ou VPN (Tailscale) — non encore précisé.
@@ -76,18 +76,18 @@ Un **assistant de vie** nommé **Nox**, un hibou :
 
 Dépôt : `antoine28boel/nox`, branche `main`. Le build GitHub Actions
 (`.github/workflows/build-windows.yml`) passe : analyse, 10 tests, build
-Windows, artefact `nox-windows` (zip contenant `nox.exe` + DLL + `data/`).
+Windows, artefact `noxo-windows` (zip contenant `noxo.exe` + DLL + `data/`).
 
 | Fichier | Rôle |
 |---|---|
 | `lib/main.dart` | Fenêtre transparente (window_manager 0.5 + flutter_acrylic), icône de notification (tray_manager 0.5), réglages (shared_preferences), lancement au démarrage |
-| `lib/nox/brain.dart` | Comportement pur Dart : états `perched/flying/falling/dragged`, perchage, vol en arc, chute, lancer, sommeil, plein écran, modes |
-| `lib/nox/desktop.dart` | Interface abstraite du bureau (coordonnées en pixels physiques) |
+| `lib/noxo/brain.dart` | Comportement pur Dart : états `perched/flying/falling/dragged`, perchage, vol en arc, chute, lancer, sommeil, plein écran, modes |
+| `lib/noxo/desktop.dart` | Interface abstraite du bureau (coordonnées en pixels physiques) |
 | `lib/win/win_desktop.dart` | Implémentation Win32 (FFI, package `win32` 5.x) |
-| `lib/nox/owl_painter.dart` | Dessin de Nox style A (coordonnées du croquis SVG, pieds en (200,408), échelle 0.4) |
-| `lib/nox/pose.dart` | Paramètres de pose par image |
-| `lib/nox/nox_view.dart` | Ticker : met à jour le cerveau, déplace la fenêtre, gère le clic-traversant |
-| `windows/runner/main.cpp` | Fenêtre « Nox » 200×180, `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` |
+| `lib/noxo/owl_painter.dart` | Dessin de Noxo style A (coordonnées du croquis SVG, pieds en (200,408), échelle 0.4) |
+| `lib/noxo/pose.dart` | Paramètres de pose par image |
+| `lib/noxo/noxo_view.dart` | Ticker : met à jour le cerveau, déplace la fenêtre, gère le clic-traversant |
+| `windows/runner/main.cpp` | Fenêtre « Noxo » 200×180, `WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` |
 | `test/brain_test.dart` | 10 tests du comportement avec un faux bureau |
 
 Comportements livrés : perchage sur la barre de titre de la fenêtre active
@@ -97,20 +97,20 @@ regard qui suit la souris, clignements, respiration, caresse (yeux ^ ^),
 glisser-lancer, sommeil après inactivité (2 min sage / 4 min espiègle),
 masqué en plein écran, menu : modes, rappeler, démarrage auto, quitter.
 
-**Mode travail (île)** : état `docked` ; Nox vole en haut au centre de
+**Mode travail (île)** : état `docked` ; Noxo vole en haut au centre de
 l'écran et devient une pilule sombre façon « dynamic island » avec seulement
 ses yeux (suivent la souris, clignent, dorment). Clic = il est « appelé »
 (l'île s'agrandit, `brain.listening`) : c'est là que se branchera le panneau
 assistant. Réglage persistant (`work` dans shared_preferences).
-Transition « plongeon » (fente → Nox s'y engouffre → île + yeux). L'île se
+Transition « plongeon » (fente → Noxo s'y engouffre → île + yeux). L'île se
 glisse le long du haut ou du bas de l'écran (`nest_x`, `nest_bottom`) et se
 rétracte en trait quand la souris approche (survol 0,5 s pour la rappeler).
 
 ### Jamais testé sur un vrai Windows — à vérifier en premier
 
-1. **Transparence** : pas de rectangle noir/blanc autour de Nox.
+1. **Transparence** : pas de rectangle noir/blanc autour de Noxo.
 2. **Clic-traversant** : `setIgnoreMouseEvents` de window_manager ajoute
-   `WS_EX_LAYERED | WS_EX_TRANSPARENT` ; vérifier que Nox **reste visible**
+   `WS_EX_LAYERED | WS_EX_TRANSPARENT` ; vérifier que Noxo **reste visible**
    quand la souris n'est pas sur lui. Sinon : poser `WS_EX_LAYERED` +
    `SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA)` une fois au
    démarrage et ne basculer que `WS_EX_TRANSPARENT`.
@@ -146,7 +146,7 @@ la charge « Développement Desktop en C++ ».
 
 ```bash
 git clone https://github.com/antoine28boel/nox.git
-cd nox
+cd noxo
 flutter pub get
 flutter test
 flutter run -d windows
@@ -160,4 +160,4 @@ Claude Code ; pousser sur `main` (le CI produit l'artefact).
 L'utilisateur ne veut plus de build à chaque push. Le workflow ne se lance que
 sur un push de la branche `release` ou via « Run workflow » (Actions). Quand
 il demande une compilation : `git push origin main:release` (après avoir
-poussé `main`). Chaque build publie une release `build-N` proposée par Nox.
+poussé `main`). Chaque build publie une release `build-N` proposée par Noxo.

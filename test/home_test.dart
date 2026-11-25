@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nox/assistant/home.dart';
-import 'package:nox/assistant/today.dart';
+import 'package:noxo/assistant/home.dart';
+import 'package:noxo/assistant/today.dart';
 
 void main() {
   final states = [
