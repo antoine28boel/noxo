@@ -8,8 +8,8 @@ import 'dart:io';
 /// never updates itself.
 const kNoxoBuild = int.fromEnvironment('NOXO_BUILD');
 
-const _latestRelease = 'https://api.github.com/repos/antoine28boel/nox/releases/latest';
-const _downloadPrefix = 'https://github.com/antoine28boel/nox/releases/download/';
+const _latestRelease = 'https://api.github.com/repos/antoine28boel/noxo/releases/latest';
+const _downloadPrefix = 'https://github.com/antoine28boel/noxo/releases/download/';
 const _assetName = 'noxo-windows.zip';
 
 /// A newer build of Noxo published by the CI.

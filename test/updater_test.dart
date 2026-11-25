@@ -4,7 +4,7 @@ import 'package:noxo/update/updater.dart';
 Map<String, Object?> release({
   String tag = 'build-12',
   String name = 'noxo-windows.zip',
-  String url = 'https://github.com/antoine28boel/nox/releases/download/build-12/noxo-windows.zip',
+  String url = 'https://github.com/antoine28boel/noxo/releases/download/build-12/noxo-windows.zip',
   String? digest,
 }) => {
   'tag_name': tag,
@@ -36,7 +36,7 @@ void main() {
       expect(parseRelease(release(url: 'https://example.com/noxo-windows.zip'), 1), isNull);
       expect(
         parseRelease(
-          release(url: 'http://github.com/antoine28boel/nox/releases/download/x.zip'),
+          release(url: 'http://github.com/antoine28boel/noxo/releases/download/x.zip'),
           1,
         ),
         isNull,
